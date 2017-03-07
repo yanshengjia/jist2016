@@ -5,6 +5,9 @@
 
 from urllib import quote
 import json
+import sys
+reload(sys)
+sys.setdefaultencoding("utf-8")
 
 list = open('./list_mkel.txt', 'r') # list0: baidubaike, list1: hudongbaike, list2: zhwiki
 list_counter = 0
@@ -12,29 +15,55 @@ list_counter = 0
 
 for route in list.readlines():
     route = route.strip('\n')
-    file = open(route, 'r').read()
+    infile = open(route, 'r').read()
 
     if list_counter == 0:
         preurl = "http://zhishi.me/baidubaike/resource/"
     if list_counter == 1:
         preurl = "http://zhishi.me/hudongbaike/resource/"
     if list_counter == 2:
-        preurl = "http://zhishi.me/zhwiki/resource/"    
+        preurl = "http://zhishi.me/zhwiki/resource/"
 
-    tables = json.loads(file, encoding='utf8')
+    tables_json = json.loads(infile, encoding='utf8')
 
-    for i in range(0, len(tables)):
-        print "Table " + str(i) + ":"
-        for j in range(0, len(tables[i])):
-            for k in range(0, len(tables[i][j])):
-                if tables[i][j][k].has_key('name'):
-                    name = tables[i][j][k]["name"]
-                    url = quote(name.encode('utf8'))
-                    tables[i][j][k]["id"] = url
-                    id = tables[i][j][k]["id"]
-                    print "id: " + preurl + id + ", name: " + name
-        print "\n"
+    for i in range(0, len(tables_json)):
+        for j in range(0, len(tables_json[i])):
+            for k in range(0, len(tables_json[i][j])):
+                if tables_json[i][j][k].has_key('name'):
+                    name = tables_json[i][j][k]["name"]
+                    suffix = quote(name.encode('utf8'))
+                    url = preurl + suffix
+                    tables_json[i][j][k]["id"] = url
 
-    break
+    tables_str = json.dumps(tables_json, ensure_ascii=False)
+
+    if list_counter == 0:
+        outfile = open("../../data/mkel/baidubaike/human_mark_baidubaike_url.txt", "w")
+        outfile.write(tables_str)
+    if list_counter == 1:
+        outfile = open("../../data/mkel/hudongbaike/human_mark_hudongbaike_url.txt", "w")
+        outfile.write(tables_str)
+    if list_counter == 2:
+        outfile = open("../../data/mkel/zhwiki/human_mark_zhwiki_url.txt", "w")
+        outfile.write(tables_str)
+
+        # convert again
+        preurl = "https://zh.wikipedia.org/wiki/"
+
+        for i in range(0, len(tables_json)):
+            for j in range(0, len(tables_json[i])):
+                for k in range(0, len(tables_json[i][j])):
+                    if tables_json[i][j][k].has_key('name'):
+                        name = tables_json[i][j][k]["name"]
+                        suffix = name
+                        url = preurl + suffix
+                        tables_json[i][j][k]["id"] = url
+        
+        tables_str = json.dumps(tables_json, ensure_ascii=False)
+        outfile_wiki = open("../../data/mkel/zhwiki/human_mark_zhwiki_wikiurl.txt", "w")
+        outfile_wiki.write(tables_str)
+
     list_counter += 1
 
+outfile.close()
+outfile_wiki.close()

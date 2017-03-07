@@ -1,3 +1,3 @@
-../../data/mkel/baidubaike/human_mark_baidubaike.txt
-../../data/mkel/hudongbaike/human_mark_hudongbaike.txt
-../../data/mkel/zhwiki/human_mark_zhwiki.txt
+../../data/mkel/baidubaike/human_mark_baidubaike_id.txt
+../../data/mkel/hudongbaike/human_mark_hudongbaike_id.txt
+../../data/mkel/zhwiki/human_mark_zhwiki_id.txt
