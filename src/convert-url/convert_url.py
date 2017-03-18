@@ -26,14 +26,20 @@ for route in list.readlines():
 
     tables_json = json.loads(infile, encoding='utf8')
 
+    # i: table number
+    # j: row number
+    # k: column number
     for i in range(0, len(tables_json)):
         for j in range(0, len(tables_json[i])):
             for k in range(0, len(tables_json[i][j])):
                 if tables_json[i][j][k].has_key('name'):
-                    name = tables_json[i][j][k]["name"]
-                    suffix = quote(name.encode('utf8'))
-                    url = preurl + suffix
-                    tables_json[i][j][k]["id"] = url
+                    if j == 0:
+                            tables_json[i][j][k]["id"] = "Null"
+                    else:
+                        name = tables_json[i][j][k]["name"]
+                        suffix = quote(name.encode('utf8'))
+                        url = preurl + suffix
+                        tables_json[i][j][k]["id"] = url
 
     tables_str = json.dumps(tables_json, ensure_ascii=False)
 
@@ -47,7 +53,7 @@ for route in list.readlines():
         outfile = open("../../data/mkel/zhwiki/human_mark_zhwiki_url.txt", "w")
         outfile.write(tables_str)
 
-        # convert again
+        # convert entity url to zhwiki url
         preurl = "https://zh.wikipedia.org/wiki/"
 
         for i in range(0, len(tables_json)):
@@ -55,10 +61,17 @@ for route in list.readlines():
                 for k in range(0, len(tables_json[i][j])):
                     if tables_json[i][j][k].has_key('name'):
                         name = tables_json[i][j][k]["name"]
+                        name = name.replace("["," (")
+                        name = name.replace("]",")")
+                        tables_json[i][j][k]["name"] = name
                         suffix = name
                         url = preurl + suffix
+                        url = url.replace(" ","_")
                         tables_json[i][j][k]["id"] = url
-        
+                        
+                        if j == 0:
+                            tables_json[i][j][k]["id"] = "Null"
+                            
         tables_str = json.dumps(tables_json, ensure_ascii=False)
         outfile_wiki = open("../../data/mkel/zhwiki/human_mark_zhwiki_wikiurl.txt", "w")
         outfile_wiki.write(tables_str)

@@ -5,6 +5,8 @@ This project aims to link string mentions in table cells to multiple linked know
 
 **Naming Rule:**
 
-* human_mark_kb_id: {“id”: entity id in our database, "name": mention name}
-* human_mark_kb_url: {“id”: entity url in zhishi.me, "name": mention name}
-* human_mark_kb_wikiurl: {“id”: entity url in zhwikipedia, "name": mention name}
+* human_mark_kb_id: {“id”: entity id in our database, "name": entity name}
+* human_mark_kb_url: {“id”: entity url in zhishi.me, "name": entity name}
+* human_mark_kb_wikiurl: {“id”: entity url in zhwikipedia, "name": entity name}
+
+For header cells in each table, their "id" is "Null" because we don't perform EL on header cells.
