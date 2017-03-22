@@ -5,8 +5,21 @@ This project aims to link string mentions in table cells to multiple linked know
 
 **Naming Rule:**
 
-* human_mark_kb_id: {“id”: entity id in our database, "name": entity name}
-* human_mark_kb_url: {“id”: entity url in zhishi.me, "name": entity name}
-* human_mark_kb_wikiurl: {“id”: entity url in zhwikipedia, "name": entity name}
+* human_mark_kb_id
+  * "name": In first row of each table, "name" means string in header cells. Otherwise, it means the name of referent entity in a KB.
+  * "id": the id of entity in our database
+* human_mark_kb_entity
+  * "head": header cells string. For header cells in each table, we don't perform EL on them.
+  * "mention": mention in non-header cells
+  * "entity": mention's referent entity in a KB
+* human_mark_kb_zhishime_url
+  * "head": header cells string. For header cells in each table, we don't perform EL on them.
+  * "mention": mention in non-header cells
+  * "entity": mention's referent entity in a KB
+  * "zhishime_url": the url of entity in [zhishi.me](http://zhishi.me)
+* human_mark_kb_wiki_url
+  * "head": header cells string. For header cells in each table, we don't perform EL on them.
+  * "mention": mention in non-header cells
+  * "entity": mention's referent entity in a KB
+  * "zhwiki_url": the url of entity in [zhwiki](https://zh.wikipedia.org/wiki/Wikipedia:首页)
 
-For header cells in each table, their "id" is "Null" because we don't perform EL on header cells.
