@@ -45,13 +45,13 @@ for route in list.readlines():
     tables_str = json.dumps(tables_json, ensure_ascii=False)
 
     if list_counter == 0:
-        outfile = open("../../data/mkel/baidubaike/human_mark_baidubaike_zhishime_url.txt", "w")
+        outfile = open("../../../data/mkel/baidubaike/human_mark_baidubaike_zhishime_url.txt", "w")
         outfile.write(tables_str)
     if list_counter == 1:
-        outfile = open("../../data/mkel/hudongbaike/human_mark_hudongbaike_zhishime_url.txt", "w")
+        outfile = open("../../../data/mkel/hudongbaike/human_mark_hudongbaike_zhishime_url.txt", "w")
         outfile.write(tables_str)
     if list_counter == 2:
-        outfile = open("../../data/mkel/zhwiki/human_mark_zhwiki_zhishime_url.txt", "w")
+        outfile = open("../../../data/mkel/zhwiki/human_mark_zhwiki_zhishime_url.txt", "w")
         outfile.write(tables_str)
 
         # convert entity url to zhwiki url
@@ -74,7 +74,7 @@ for route in list.readlines():
 
 
         tables_str = json.dumps(tables_json, ensure_ascii=False)
-        outfile_wiki = open("../../data/mkel/zhwiki/human_mark_zhwiki_wiki_url.txt", "w")
+        outfile_wiki = open("../../../data/mkel/zhwiki/human_mark_zhwiki_wiki_url.txt", "w")
         outfile_wiki.write(tables_str)
 
     list_counter += 1

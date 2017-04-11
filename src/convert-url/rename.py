@@ -10,7 +10,6 @@ import sys
 import xlrd
 reload(sys)
 sys.setdefaultencoding("utf-8")
-type = sys.getfilesystemencoding()
 
 
 class Table:
@@ -38,7 +37,7 @@ class Table:
 # 获取 excel 文件中的所有表格
 class tableManager:
     def __init__(self):
-        self.excel = xlrd.open_workbook("../../data/mkel/tables.xls")
+        self.excel = xlrd.open_workbook("../../../data/mkel/table/table_123.xls")
 
     def getTable(self):
         table = self.excel.sheet_by_name('Sheet1')
@@ -130,13 +129,13 @@ if __name__ == '__main__':
         tables_str = json.dumps(tables_json, ensure_ascii=False)
 
         if list_counter == 0:
-            outfile = open("../../data/mkel/baidubaike/human_mark_baidubaike_entity.txt", "w")
+            outfile = open("../../../data/mkel/baidubaike/human_mark_baidubaike_entity.txt", "w")
             outfile.write(tables_str)
         if list_counter == 1:
-            outfile = open("../../data/mkel/hudongbaike/human_mark_hudongbaike_entity.txt", "w")
+            outfile = open("../../../data/mkel/hudongbaike/human_mark_hudongbaike_entity.txt", "w")
             outfile.write(tables_str)
         if list_counter == 2:
-            outfile = open("../../data/mkel/zhwiki/human_mark_zhwiki_entity.txt", "w")
+            outfile = open("../../../data/mkel/zhwiki/human_mark_zhwiki_entity.txt", "w")
             outfile.write(tables_str)
 
         list_counter += 1
