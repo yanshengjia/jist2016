@@ -232,8 +232,18 @@ class EntityDisambiguationGraph(object):
 
     # 计算 mention node 和其所有相邻 entity node 之间的语义相似度之和
     # m: mention node index
-    def SR_m_star(self, m):
-        print
+    def SR_me_star(self, m):
+        sr_me_star = 0.0
+
+        if self.EDG.node[m]['NIL'] == True:
+            return sr_me_star
+        else:
+            candidates = self.EDG.neighbors(m)
+
+            for e in candidates:
+                sr_me_star += self.EDG.edge[m][e]['probability']
+
+            return sr_me_star
 
     # 计算 2 entities 之间的三元组关系特征 (Triple Relation Feature)
     # ???: e1 和 e2 存在于同一个 RDF 中是否需要存在于不同部分
@@ -285,14 +295,29 @@ class EntityDisambiguationGraph(object):
         sr_ee = 0.99 * (alpha2 * self.IsRDF(e1, e2) + beta2 * self.contSim_ee(e1, e2)) + 0.01
         return sr_ee
 
-    # 计算
+    # 计算 entity node 和其相邻的唯一一个 mention node 之间的语义相似度
+    # e: entity node index
     def SR_em(self, e):
-        print
+        m = self.EDG.node[e]['mNode_index']
+        sr_em = self.EDG.edge[m][e]['probability']
+        return sr_em
 
     # 计算 entity node 和其所有相邻 entity node 之间的语义相似度之和
     # e: entity node index
-    def SR_e_star(self, e):
-        print
+    def SR_ee_star(self, e):
+        sr_ee_star = 0.0
+
+        m = self.EDG.node[e]['mNode_index']
+        sr_me = self.EDG.edge[m][e]['probability']
+
+        entities = self.EDG.neighbors(e)
+
+        for ee in entities:
+            sr_ee_star += self.EDG.edge[e][ee]['probability']
+
+        sr_ee_star -= sr_me
+
+        return sr_ee_star
 
     # Computing EL Impact Factors
     def compute_el_impact_factors(self):
@@ -325,11 +350,14 @@ class EntityDisambiguationGraph(object):
     def iterative_probability_propagation(self):
         EDG = self.EDG
         n = self.node_quantity
-        d = 0.85    # damping factor
-        t = 200     # the number of iterations
+        damping_factor = 0.85
+        iterations = 200
         A = [[0.0 for col in range(n)] for row in range(n)]
         E = [[1.0 for col in range(n)] for row in range(n)]
+        r = [0.0 for i in range(n)]
+        delta = 0.001
 
+        # compute A[i][j]
         for i in range(n):
             for j in range(n):
                 if i == j:
@@ -348,15 +376,35 @@ class EntityDisambiguationGraph(object):
                         if EDG.has_edge(i, j) == False:
                             continue
                         else:
-                            A[i][j] = EDG.edge[i][j]['probability'] /
-
+                            A[i][j] = EDG.edge[i][j]['probability'] / self.SR_me_star(i)
 
                 if i_type == 'eNode' and j_type == 'mNode':
-
+                    if EDG.node[j]['NIL'] == True:
+                        continue
+                    else:
+                        if EDG.has_edge(i, j) == False:
+                            continue
+                        else:
+                            A[i][j] = A[j][i]
 
                 if i_type == 'eNode' and j_type == 'eNode':
+                    A[i][j] = (1.0 - self.SR_em(i)) * self.EDG.edge[i][j]['probability'] / self.SR_ee_star(i)
 
+        # initialize r(i)
+        # epoch 0
+        for i in range(n):
+            type = self.EDG.node[i]['type']
 
+            if type == 'mNode':
+                r[i] = 1.0 / self.mention_quantity
+
+            if type == 'eNode':
+                r[i] = 0.0
+
+        # update r(i)
+        for epoch in range(1, iterations + 1):
+            r_next = [0.0 for i in range(n)]
+            
 
 
 
