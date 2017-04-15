@@ -10,6 +10,7 @@ import pickle
 import copy
 import networkx as nx
 from networkx.drawing.nx_agraph import write_dot
+import numpy as np
 import os
 import json
 from table import *
@@ -31,6 +32,8 @@ class EntityDisambiguationGraph(object):
     # entity_node_begin: entity node 编号的开始
     # entity_node_end: entity node 编号的结束
     # node_quantity: 所有节点的总数
+    # A: 概率转移列表
+    # r: 消岐结果概率列表
     def __init__(self, table_number, table, candidates, graph_path, infobox_property_path):
         self.table_number = table_number
         self.table = table
@@ -48,6 +51,8 @@ class EntityDisambiguationGraph(object):
         self.entity_node_begin = self.mention_quantity
         self.entity_node_end = 0
         self.node_quantity = 0
+        self.A = []
+        self.r = []
 
     # 获取当前表格中一个 mention 的上下文，该 mention 位于第r行第c列，r与c都从0开始
     # r: mention 所处的行号
@@ -135,14 +140,16 @@ class EntityDisambiguationGraph(object):
                     flag_NIL = False
 
                 # 在 EDG 中添加 mention node
-                EDG.add_node(mention_counter, type='mNode', mention=mention, NIL=flag_NIL, table=i, row=r, column=c, probability=float(mention_node_initial_importance), context=[])
+                # eNode_index: mention node 最终链接到的 entity node 的编号
+                EDG.add_node(mention_counter, type='mNode', mention=mention, NIL=flag_NIL, table=i, row=r, column=c, eNode_index=0, probability=float(mention_node_initial_importance), context=[])
                 EDG.node[mention_counter]['label'] = 'mention: ' + EDG.node[mention_counter]['mention'] + '\n' + str(EDG.node[mention_counter]['probability'])
                 EDG.node[mention_counter]['context'] = self.get_mention_context(r, c)
 
                 if flag_NIL == False:
                     # 在 EDG 中添加 entity node
+                    # mNode_index: entity node 相邻的唯一一个 mention node 的编号
                     for candidate in mention_candidates:
-                        EDG.add_node(entity_counter, type='eNode', candidate=candidate, table=i, row=r, column=c, mNode_index=mention_counter, probability=float(0), context=[])
+                        EDG.add_node(entity_counter, type='eNode', candidate=candidate, mNode_index=mention_counter, probability=float(0), context=[])
                         EDG.node[entity_counter]['label'] = 'candidate: ' + EDG.node[entity_counter]['candidate'] + '\n' + str(EDG.node[entity_counter]['probability'])
                         EDG.node[entity_counter]['context'] = self.get_entity_context(candidate)
 
@@ -356,6 +363,7 @@ class EntityDisambiguationGraph(object):
         E = [[1.0 for col in range(n)] for row in range(n)]
         r = [0.0 for i in range(n)]
         delta = 0.001
+        flag_convergence = False
 
         # compute A[i][j]
         for i in range(n):
@@ -390,6 +398,8 @@ class EntityDisambiguationGraph(object):
                 if i_type == 'eNode' and j_type == 'eNode':
                     A[i][j] = (1.0 - self.SR_em(i)) * self.EDG.edge[i][j]['probability'] / self.SR_ee_star(i)
 
+        self.A = A
+
         # initialize r(i)
         # epoch 0
         for i in range(n):
@@ -401,20 +411,59 @@ class EntityDisambiguationGraph(object):
             if type == 'eNode':
                 r[i] = 0.0
 
+        matrix_r = np.matrix(r).T
+        matrix_A = np.matrix(A)
+        matrix_E = np.matrix(E)
+
         # update r(i)
         for epoch in range(1, iterations + 1):
-            r_next = [0.0 for i in range(n)]
-            
+            matrix_r_next = ((1.0 - damping_factor) * matrix_E / n + damping_factor * matrix_A) * matrix_r
 
+            r_list = matrix_r.tolist()
+            r_next_list = matrix_r_next.tolist()
+            max_difference = 0.0
 
+            for i in range(n):
+                difference = abs(r_list[i][0] - r_next_list[i][0])
 
+                if difference > max_difference:
+                    max_difference = difference
 
+            if max_difference <= delta:
+                print 'At epoch ' + str(epoch) + ', convergence is reached!'
+                matrix_r = matrix_r_next
+                flag_convergence = True
+                break
+
+            matrix_r = matrix_r_next
+
+        r_list = matrix_r.tolist()
+
+        for i in range(n):
+            r[i] = r_list[i][0]
+
+        self.r = r
+
+        if flag_convergence == False:
+            print 'After epoch ' + str(iterations) + ', iterative probability propagation is done!'
 
     # 选出 mention 的候选实体中概率值最高的一个作为 mention 的对应实体
     def pick_entity(self):
-        print
+        EDG = self.EDG
+        r = self.r
 
+        for i in range(self.mention_node_begin, self.mention_node_end + 1):
+            candidates = EDG.neighbors(i)
+            highest_probability = 0.0
 
+            for e in candidates:
+                probability = r[e]
+
+                if probability > highest_probability:
+                    highest_probability = probability
+                    referent_entity_index = e
+
+            EDG.node[i]['eNode_index'] = referent_entity_index
 
 
 class Disambiguation(object):
@@ -481,9 +530,6 @@ class Disambiguation(object):
                     break
 
             finally:
-                # zhwiki_disambiguation_json = json.dumps(zhwiki_mention_entity, ensure_ascii=False)
-                # zhwiki_disambiguation.write(zhwiki_disambiguation_json)
-
                 if zhwiki_candidate_file:
                     zhwiki_candidate_file.close()
 
