@@ -140,8 +140,8 @@ class EntityDisambiguationGraph(object):
                     flag_NIL = False
 
                 # 在 EDG 中添加 mention node
-                # eNode_index: mention node 最终链接到的 entity node 的编号
-                EDG.add_node(mention_counter, type='mNode', mention=mention, NIL=flag_NIL, table=i, row=r, column=c, eNode_index=0, probability=float(mention_node_initial_importance), context=[])
+                # ranking: [(entity node index i, the probability for the node i to be the referent entity of the mention)] 候选实体根据概率逆序排列的列表
+                EDG.add_node(mention_counter, type='mNode', mention=mention, NIL=flag_NIL, table=i, row=r, column=c, ranking=[], probability=float(mention_node_initial_importance), context=[])
                 EDG.node[mention_counter]['label'] = 'mention: ' + EDG.node[mention_counter]['mention'] + '\n' + str(EDG.node[mention_counter]['probability'])
                 EDG.node[mention_counter]['context'] = self.get_mention_context(r, c)
 
@@ -447,23 +447,27 @@ class EntityDisambiguationGraph(object):
         if flag_convergence == False:
             print 'After epoch ' + str(iterations) + ', iterative probability propagation is done!'
 
-    # 选出 mention 的候选实体中概率值最高的一个作为 mention 的对应实体
-    def pick_entity(self):
+    # 给 mention 的候选实体排名
+    def rank_candidates(self):
         EDG = self.EDG
         r = self.r
 
         for i in range(self.mention_node_begin, self.mention_node_end + 1):
+            if EDG.node[i]['NIL'] == True:
+                continue
+
             candidates = EDG.neighbors(i)
-            highest_probability = 0.0
+            ranking = []
 
             for e in candidates:
                 probability = r[e]
+                tuple = (e, probability)
+                ranking.append(tuple)
 
-                if probability > highest_probability:
-                    highest_probability = probability
-                    referent_entity_index = e
+            ranking.sort(key=lambda x: x[1], reverse=True)
+            EDG.node[i]['ranking'] = ranking
 
-            EDG.node[i]['eNode_index'] = referent_entity_index
+        self.EDG = EDG
 
 
 class Disambiguation(object):
@@ -526,6 +530,7 @@ class Disambiguation(object):
                     EDG_master.compute_el_impact_factors()
                     EDG_master.save_entity_disambiguation_graph()
                     EDG_master.iterative_probability_propagation()
+                    EDG_master.rank_candidates()
 
                     break
 
