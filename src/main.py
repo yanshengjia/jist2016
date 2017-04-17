@@ -116,38 +116,37 @@ def candidate_generation():
 
 # Step 3: 实体消岐
 def entity_disambiguation():
-    # # baidubaike
-    # table_name = 'table_123'
-    # table_path = '../../../data/table/table_123.xls'
-    # kb_name = 'baidubaike'
-    # candidate_name = 'baidubaike_candidate_entities'
-    # candidate_path = '../../../data/candidate/baidubaike_candidate_entities.txt'
-    # graph_path = '../../../data/disambiguation/baidubaike/graph/'
-    # disambiguation_output_path = '../../../data/disambiguation/baidubaike/baidubaike_disambiguation.txt'
-    # infobox_property_path = '../../../data/property/baidubaike_infobox_properties.txt'
-    #
-    # baidubaike_judger = Disambiguation(table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path)
-    #
-    # print 'Disambiguating candidate entities based on ' + kb_name + '......',
-    # baidubaike_judger.disambiguation()
-    # print 'Done!'
-    #
-    #
-    # # hudongbaike
-    # table_name = 'table_123'
-    # table_path = '../../../data/table/table_123.xls'
-    # kb_name = 'hudongbaike'
-    # candidate_name = 'hudongbaike_candidate_entities'
-    # candidate_path = '../../../data/candidate/hudongbaike_candidate_entities.txt'
-    # graph_path = '../../../data/disambiguation/hudongbaike/graph/'
-    # disambiguation_output_path = '../../../data/disambiguation/hudongbaike/hudongbaike_disambiguation.txt'
-    # infobox_property_path = '../../../data/property/hudongbaike_infobox_properties.txt'
-    #
-    # hudongbaike_judger = Disambiguation(table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path)
-    #
-    # print 'Disambiguating candidate entities based on ' + kb_name + '......',
-    # hudongbaike_judger.disambiguation()
-    # print 'Done!'
+    # baidubaike
+    table_name = 'table_123'
+    table_path = '../../../data/table/table_123.xls'
+    kb_name = 'baidubaike'
+    candidate_name = 'baidubaike_candidate_entities'
+    candidate_path = '../../../data/candidate/baidubaike_candidate_entities.txt'
+    graph_path = '../../../data/disambiguation/baidubaike/graph/'
+    disambiguation_output_path = '../../../data/disambiguation/baidubaike/result/'
+    infobox_property_path = '../../../data/property/baidubaike_infobox_properties.txt'
+
+    baidubaike_judger = Disambiguation(table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path)
+
+    print 'Disambiguating candidate entities based on ' + kb_name + ':'
+    baidubaike_judger.disambiguation()
+
+
+    # hudongbaike
+    table_name = 'table_123'
+    table_path = '../../../data/table/table_123.xls'
+    kb_name = 'hudongbaike'
+    candidate_name = 'hudongbaike_candidate_entities'
+    candidate_path = '../../../data/candidate/hudongbaike_candidate_entities.txt'
+    graph_path = '../../../data/disambiguation/hudongbaike/graph/'
+    disambiguation_output_path = '../../../data/disambiguation/hudongbaike/result/'
+    infobox_property_path = '../../../data/property/hudongbaike_infobox_properties.txt'
+
+    hudongbaike_judger = Disambiguation(table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path)
+
+    print 'Disambiguating candidate entities based on ' + kb_name + ':'
+    hudongbaike_judger.disambiguation()
+
 
     # zhwiki
     table_name = 'table_123'
@@ -156,14 +155,13 @@ def entity_disambiguation():
     candidate_name = 'zhwiki_candidate_entities'
     candidate_path = '../../../data/candidate/zhwiki_candidate_entities.txt'
     graph_path = '../../../data/disambiguation/zhwiki/graph/'
-    disambiguation_output_path = '../../../data/disambiguation/zhwiki/zhwiki_disambiguation.txt'
+    disambiguation_output_path = '../../../data/disambiguation/zhwiki/result/'
     infobox_property_path = '../../../data/property/zhwiki_infobox_properties.txt'
 
     zhwiki_judger = Disambiguation(table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path)
 
-    print 'Disambiguating candidate entities based on ' + kb_name + '......',
+    print 'Disambiguating candidate entities based on ' + kb_name + ':'
     zhwiki_judger.disambiguation()
-    print 'Done!'
 
 
 # Step 4: 利用多知识库间sameAs关系提升链接质量

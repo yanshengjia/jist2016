@@ -6,8 +6,9 @@
 # 实验的第三步：单知识库候选实体消岐
 
 import Levenshtein
-import pickle
+import time
 import copy
+import pickle
 import networkx as nx
 from networkx.drawing.nx_agraph import write_dot
 import numpy as np
@@ -20,8 +21,10 @@ class EntityDisambiguationGraph(object):
     # table: 第i张表格，Table 类型对象
     # table_number: 表格的编号，即为 i
     # candidates: 当前表格中 mentions 的候选实体
-    # graph_path: EDG 的输出路径
-    # infobox_property_path: 知识库的 infobox_property 文件路径，用于计算 IsRDF 特征和获取实体上下文
+    # graph_path: EDG 图片输出路径
+    # edg_path: EDG 输出路径
+    # infobox_property: 知识库的 infobox_property 文件，用于计算 IsRDF 特征和获取实体上下文
+    # disambiguation_result_path: 消岐结果输出路径
     # mention_quantity: 当前表格中的 mention 数量
     # row_num: 当前表格的行数
     # col_num: 当前表格的列数
@@ -34,7 +37,7 @@ class EntityDisambiguationGraph(object):
     # node_quantity: 所有节点的总数
     # A: 概率转移列表
     # r: 消岐结果概率列表
-    def __init__(self, table_number, table, candidates, graph_path, infobox_property_path):
+    def __init__(self, table_number, table, candidates, graph_path, infobox_property, disambiguation_output_path):
         self.table_number = table_number
         self.table = table
         self.mention_quantity = table.mention_quantity
@@ -44,8 +47,9 @@ class EntityDisambiguationGraph(object):
         self.EDG = nx.Graph(number=str(table_number))
         self.miniEDG = nx.Graph(number=str(table_number))
         self.graph_path = graph_path
-        self.graph_file_path = graph_path + 'edg' + str(table_number) + '.txt'
-        self.infobox_property_path = infobox_property_path
+        self.edg_path = graph_path + 'edg' + str(table_number) + '.txt'
+        self.infobox_property = infobox_property
+        self.disambiguation_result_path = disambiguation_output_path + str(table_number) + '.txt'
         self.mention_node_begin = 0
         self.mention_node_end = self.mention_quantity - 1
         self.entity_node_begin = self.mention_quantity
@@ -53,6 +57,7 @@ class EntityDisambiguationGraph(object):
         self.node_quantity = 0
         self.A = []
         self.r = []
+        print 'Table ' + str(table_number)
 
     # 获取当前表格中一个 mention 的上下文，该 mention 位于第r行第c列，r与c都从0开始
     # r: mention 所处的行号
@@ -67,34 +72,25 @@ class EntityDisambiguationGraph(object):
     def get_entity_context(self, e):
         entity_context = []
 
-        try:
-            infobox_property = open(self.infobox_property_path, 'r')
-            infobox_property_counter = 0
+        infobox_property = self.infobox_property
 
-            for rdf in infobox_property.readlines():
-                infobox_property_counter += 1
-                rdf = rdf.strip('\n')
+        for rdf in infobox_property.readlines():
+            rdf = rdf.strip('\n')
 
-                # split
-                split = rdf.split('> <')
-                subject = split[0]
-                object = split[2]
+            # split
+            split = rdf.split('> <')
+            subject = split[0]
+            object = split[2]
 
-                # clean
-                subject = subject[1:]
-                object = object[:-1]
+            # clean
+            subject = subject[1:]
+            object = object[:-1]
 
-                if e == subject:
-                    entity_context.append(object)
+            if e == subject:
+                entity_context.append(object)
 
-                if e == object:
-                    entity_context.append(subject)
-
-        finally:
-            # print 'infobox property counter: ' + str(infobox_property_counter)
-
-            if infobox_property:
-                infobox_property.close()
+            if e == object:
+                entity_context.append(subject)
 
         return entity_context
 
@@ -105,7 +101,8 @@ class EntityDisambiguationGraph(object):
     # eeEdge: entity-entity edge
     # node probability: mention node probability 为初始权重值。entity node probability 在 iterative_probability_propagation() 中计算
     # edge probability: 边两端节点间的语义相似度。有2种边，mention-entity edge 和 entity-entity edge
-    def create_entity_disambiguation_graph(self):
+    def build_entity_disambiguation_graph(self):
+        print 'Building Entity Disambiguation Graph......',
         EDG = self.EDG
         table = self.table
         candidates = self.candidates
@@ -172,13 +169,16 @@ class EntityDisambiguationGraph(object):
                     EDG.edge[p][q]['label'] = str(EDG.edge[p][q]['probability'])
 
         self.EDG = EDG
+        print 'Done!'
 
     def save_entity_disambiguation_graph(self):
+        print 'Saving Entity Disambiguation Graph......',
         EDG = self.EDG
-        pickle.dump(EDG, open(self.graph_file_path, 'w'))
+        nx.write_gpickle(EDG, self.edg_path)
+        print 'Done!'
 
     def load_entity_disambiguation_graph(self):
-        self.EDG = pickle.load(open(self.graph_file_path))
+        self.EDG = nx.read_gpickle(self.edg_path)
 
     # 画出来的 EDG 是不包含 entity-entity edge 的，因为如果要包含的话时间开销太大了
     def draw_entity_disambiguation_graph(self):
@@ -261,21 +261,14 @@ class EntityDisambiguationGraph(object):
         entity1 = self.EDG.node[e1]['candidate']
         entity2 = self.EDG.node[e2]['candidate']
 
-        try:
-            infobox_property = open(self.infobox_property_path, 'r')
-            infobox_property_counter = 0
+        infobox_property = self.infobox_property
 
-            for rdf in infobox_property.readlines():
-                infobox_property_counter += 1
-                rdf = rdf.strip('\n')
+        for rdf in infobox_property.readlines():
+            rdf = rdf.strip('\n')
 
-                if entity1 in rdf and entity2 in rdf:
-                    is_rdf = 1
-                    break
-
-        finally:
-            if infobox_property:
-                infobox_property.close()
+            if entity1 in rdf and entity2 in rdf:
+                is_rdf = 1
+                break
 
         return is_rdf
 
@@ -328,6 +321,7 @@ class EntityDisambiguationGraph(object):
 
     # Computing EL Impact Factors
     def compute_el_impact_factors(self):
+        print 'Computing the EL Impact Factors......',
         EDG = self.EDG
 
         # compute semantic relatedness between mentions and entities
@@ -351,14 +345,16 @@ class EntityDisambiguationGraph(object):
                     EDG.edge[p][q]['probability'] = self.SR_ee(p, q)
 
         self.EDG = EDG
+        print 'Done!'
 
     # Iterative Probability Propagation
     # 计算 entity node probability (该 entity 成为 mention 的对应实体的概率)
     def iterative_probability_propagation(self):
+        print 'Iterative Probability Propagation......',
         EDG = self.EDG
         n = self.node_quantity
         damping_factor = 0.85
-        iterations = 200
+        iterations = 10
         A = [[0.0 for col in range(n)] for row in range(n)]
         E = [[1.0 for col in range(n)] for row in range(n)]
         r = [0.0 for i in range(n)]
@@ -403,13 +399,10 @@ class EntityDisambiguationGraph(object):
         # initialize r(i)
         # epoch 0
         for i in range(n):
-            type = self.EDG.node[i]['type']
-
-            if type == 'mNode':
-                r[i] = 1.0 / self.mention_quantity
-
-            if type == 'eNode':
-                r[i] = 0.0
+            if i < self.mention_quantity:
+                r[i] = 1.0 / self.mention_quantity  # mNode
+            else:
+                r[i] = 0.0  # eNode
 
         matrix_r = np.matrix(r).T
         matrix_A = np.matrix(A)
@@ -430,7 +423,7 @@ class EntityDisambiguationGraph(object):
                     max_difference = difference
 
             if max_difference <= delta:
-                print 'At epoch ' + str(epoch) + ', convergence is reached!'
+                print 'At epoch ' + str(epoch) + ' convergence is reached!'
                 matrix_r = matrix_r_next
                 flag_convergence = True
                 break
@@ -442,13 +435,19 @@ class EntityDisambiguationGraph(object):
         for i in range(n):
             r[i] = r_list[i][0]
 
-        self.r = r
-
         if flag_convergence == False:
-            print 'After epoch ' + str(iterations) + ', iterative probability propagation is done!'
+            print 'After epoch ' + str(iterations) + ' iterative probability propagation is done!'
+
+        # 计算 eNode 上的概率
+        for p in range(self.entity_node_begin, self.entity_node_end + 1):
+            EDG.node[p]['probability'] = r[p]
+
+        self.r = r
+        self.EDG = EDG
 
     # 给 mention 的候选实体排名
     def rank_candidates(self):
+        print 'Ranking candidates......',
         EDG = self.EDG
         r = self.r
 
@@ -468,6 +467,53 @@ class EntityDisambiguationGraph(object):
             EDG.node[i]['ranking'] = ranking
 
         self.EDG = EDG
+        print 'Done!'
+
+    # 挑选出 mention 的候选实体中概率最高的一个 entity
+    # 将消岐后的结果文件存储于 disambiguation_output_path
+    def pick_entity(self):
+        print 'Picking the referent entity......',
+        EDG = self.EDG
+        table = self.table
+        nRow = self.row_num
+        nCol = self.col_num
+        i = self.mention_node_begin
+        t = []
+
+        for m in range(nRow):
+            row = []
+            for n in range(nCol):
+                dict = {}
+
+                if m == 0:
+                    dict['header'] = table.get_cell(m, n)
+                else:
+                    mention = EDG.node[i]['mention']
+
+                    if EDG.node[i]['NIL'] == True:
+                        entity = 'Null'
+                    else:
+                        eNode_index = EDG.node[i]['ranking'][0][0]
+                        entity = EDG.node[eNode_index]['candidate']
+
+                    dict['mention'] = mention
+                    dict['entity'] = entity
+                    i += 1
+
+                row.append(dict)
+            t.append(row)
+
+        try:
+            disambiguation_file = open(self.disambiguation_result_path, 'w')
+
+        finally:
+            disambiguation_result = json.dumps(t, ensure_ascii=False)
+            disambiguation_file.write(disambiguation_result)
+
+            if disambiguation_file:
+                disambiguation_file.close()
+
+        print 'Done!'
 
 
 class Disambiguation(object):
@@ -493,18 +539,82 @@ class Disambiguation(object):
         self.infobox_property_path = infobox_property_path
 
     def disambiguation(self):
-        # # baidubaike
-        # if self.kb_name == "baidubaike":
-        #     try:
-        #
-        #     finally:
-        #
-        #
-        # # hudongbaike
-        # if self.kb_name == "hudongbaike":
-        #     try:
-        #
-        #     finally:
+        # baidubaike
+        if self.kb_name == "baidubaike":
+            try:
+                tables = self.tables
+                baidubaike_graph_path = self.graph_path
+                baidubaike_disambiguation_output_path = self.disambiguation_output_path
+                baidubaike_candidate_file = open(self.candidate_path, 'r')
+                baidubaike_candidate = baidubaike_candidate_file.read()
+                baidubaike_candidate_json = json.loads(baidubaike_candidate, encoding='utf8')    # kb_candidate[nTable][nRow][nCol] = dict{'mention': m, 'candidates': []}
+                baidubaike_infobox_property = open(self.infobox_property_path, 'r')
+
+                # i: 第i张表格，从0开始
+                for i in range(self.table_quantity):
+                    table = tables[i]
+                    candidates = baidubaike_candidate_json[i]
+
+                    EDG_master = EntityDisambiguationGraph(i, table, candidates, baidubaike_graph_path, baidubaike_infobox_property, baidubaike_disambiguation_output_path)
+
+                    time1 = time.time()
+
+                    EDG_master.build_entity_disambiguation_graph()
+                    # EDG_master.draw_entity_disambiguation_graph()
+                    EDG_master.compute_el_impact_factors()
+                    EDG_master.iterative_probability_propagation()
+                    EDG_master.rank_candidates()
+                    EDG_master.pick_entity()
+                    EDG_master.save_entity_disambiguation_graph()
+
+                    time2 = time.time()
+                    print 'Consumed Time: ' + str(time2 - time1) + ' s'
+                    print
+            finally:
+                if baidubaike_candidate_file:
+                    baidubaike_candidate_file.close()
+
+                if baidubaike_infobox_property:
+                    baidubaike_infobox_property.close()
+
+
+        # hudongbaike
+        if self.kb_name == "hudongbaike":
+            try:
+                tables = self.tables
+                hudongbaike_graph_path = self.graph_path
+                hudongbaike_disambiguation_output_path = self.disambiguation_output_path
+                hudongbaike_candidate_file = open(self.candidate_path, 'r')
+                hudongbaike_candidate = hudongbaike_candidate_file.read()
+                hudongbaike_candidate_json = json.loads(hudongbaike_candidate, encoding='utf8')    # kb_candidate[nTable][nRow][nCol] = dict{'mention': m, 'candidates': []}
+                hudongbaike_infobox_property = open(self.infobox_property_path, 'r')
+
+                # i: 第i张表格，从0开始
+                for i in range(self.table_quantity):
+                    table = tables[i]
+                    candidates = hudongbaike_candidate_json[i]
+
+                    EDG_master = EntityDisambiguationGraph(i, table, candidates, hudongbaike_graph_path, hudongbaike_infobox_property, hudongbaike_disambiguation_output_path)
+
+                    time1 = time.time()
+
+                    EDG_master.build_entity_disambiguation_graph()
+                    # EDG_master.draw_entity_disambiguation_graph()
+                    EDG_master.compute_el_impact_factors()
+                    EDG_master.iterative_probability_propagation()
+                    EDG_master.rank_candidates()
+                    EDG_master.pick_entity()
+                    EDG_master.save_entity_disambiguation_graph()
+
+                    time2 = time.time()
+                    print 'Consumed Time: ' + str(time2 - time1) + ' s'
+                    print
+            finally:
+                if hudongbaike_candidate_file:
+                    hudongbaike_candidate_file.close()
+
+                if hudongbaike_infobox_property:
+                    hudongbaike_infobox_property.close()
 
 
         # zhwiki
@@ -512,32 +622,36 @@ class Disambiguation(object):
             try:
                 tables = self.tables
                 zhwiki_graph_path = self.graph_path
+                zhwiki_disambiguation_output_path = self.disambiguation_output_path
                 zhwiki_candidate_file = open(self.candidate_path, 'r')
-                zhwiki_disambiguation = open(self.disambiguation_output_path, 'w')
                 zhwiki_candidate = zhwiki_candidate_file.read()
                 zhwiki_candidate_json = json.loads(zhwiki_candidate, encoding='utf8')    # kb_candidate[nTable][nRow][nCol] = dict{'mention': m, 'candidates': []}
-                zhwiki_infobox_property_path = self.infobox_property_path
+                zhwiki_infobox_property = open(self.infobox_property_path, 'r')
 
                 # i: 第i张表格，从0开始
                 for i in range(self.table_quantity):
                     table = tables[i]
                     candidates = zhwiki_candidate_json[i]
 
-                    EDG_master = EntityDisambiguationGraph(i, table, candidates, zhwiki_graph_path, zhwiki_infobox_property_path)
+                    EDG_master = EntityDisambiguationGraph(i, table, candidates, zhwiki_graph_path, zhwiki_infobox_property, zhwiki_disambiguation_output_path)
 
-                    EDG_master.create_entity_disambiguation_graph()
+                    time1 = time.time()
+
+                    EDG_master.build_entity_disambiguation_graph()
                     # EDG_master.draw_entity_disambiguation_graph()
                     EDG_master.compute_el_impact_factors()
-                    EDG_master.save_entity_disambiguation_graph()
                     EDG_master.iterative_probability_propagation()
                     EDG_master.rank_candidates()
+                    EDG_master.pick_entity()
+                    EDG_master.save_entity_disambiguation_graph()
 
-                    break
-
+                    time2 = time.time()
+                    print 'Consumed Time: ' + str(time2 - time1) + ' s'
+                    print
             finally:
                 if zhwiki_candidate_file:
                     zhwiki_candidate_file.close()
 
-                if zhwiki_disambiguation:
-                    zhwiki_disambiguation.close()
+                if zhwiki_infobox_property:
+                    zhwiki_infobox_property.close()
 
