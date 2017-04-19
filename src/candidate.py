@@ -9,6 +9,7 @@
 import json
 import sys
 from table import *
+import Levenshtein
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
@@ -22,6 +23,7 @@ class Candidate(object):
     # entity_path: 知识库实体路径
     # babelnet_path: 由 BabelNet 生成的同义词实体文件的路径
     # candidate_path: 生成好的候选实体的输出路径
+    # threshold: 筛选候选实体与 mention 的字符串相似度阈值
     def __init__(self, table_name, table_path, kb_name, entity_path, babelnet_path, candidate_path):
         table_manager = TableManager(table_path)
         self.tables = table_manager.get_tables()  # tables[i][j][k]: 第i张表第j行第k列的单元格中的字符串
@@ -32,6 +34,25 @@ class Candidate(object):
         self.entity_path = entity_path
         self.babelnet_path = babelnet_path
         self.candidate_path = candidate_path
+        self.threshold = 0.6
+
+    # String Similarity
+    # s1: string 1
+    # s2: string 2
+    def string_similarity(self, s1, s2):
+        s1 = s1.decode('utf8')
+        s2 = s2.decode('utf8')
+        edit_distance = Levenshtein.distance(s1, s2)
+        len_s1 = len(s1)
+        len_s2 = len(s2)
+
+        if len_s1 > len_s2:
+            max = len_s1
+        else:
+            max = len_s2
+
+        string_similarity = 1.0 - float(edit_distance) / max
+        return string_similarity
 
     def generate_candidate(self):
         # baidubaike
@@ -89,10 +110,15 @@ class Candidate(object):
                                 continue
 
                             for entity_url in baidubaike_entity_url:
-                                entity = entity_url['entity']
+                                entity = entity_url['entity']       # 完整的实体，包括消岐义内容 real_entity[disambiguation]
+                                split = entity.split('[')
+                                real_entity = split[0]              # 真实的实体，去除了消岐义内容 real_entity
 
-                                if cell in entity:
-                                    candidates.append(entity)
+                                if cell in real_entity:
+                                    string_similarity = self.string_similarity(cell, real_entity)
+
+                                    if string_similarity >= self.threshold:
+                                        candidates.append(entity)
 
                             dict['mention'] = cell
                             dict['candidates'] = candidates
@@ -168,10 +194,15 @@ class Candidate(object):
                                 continue
 
                             for entity_url in hudongbaike_entity_url:
-                                entity = entity_url['entity']
+                                entity = entity_url['entity']       # 完整的实体，包括消岐义内容 real_entity [disambiguation]
+                                split = entity.split(' [')
+                                real_entity = split[0]              # 真实的实体，去除了消岐义内容 real_entity
 
-                                if cell in entity:
-                                    candidates.append(entity)
+                                if cell in real_entity:
+                                    string_similarity = self.string_similarity(cell, real_entity)
+
+                                    if string_similarity >= self.threshold:
+                                        candidates.append(entity)
 
                             dict['mention'] = cell
                             dict['candidates'] = candidates
@@ -247,10 +278,15 @@ class Candidate(object):
                                 continue
 
                             for entity_url in zhwiki_entity_url:
-                                entity = entity_url['entity']
+                                entity = entity_url['entity']   # 完整的实体，包括消岐义内容 real_entity (disambiguation)
+                                split = entity.split(' (')
+                                real_entity = split[0]          # 真实的实体，去除了消岐义内容 real_entity
 
-                                if cell in entity:
-                                    candidates.append(entity)
+                                if cell in real_entity:
+                                    string_similarity = self.string_similarity(cell, real_entity)
+
+                                    if string_similarity >= self.threshold:
+                                        candidates.append(entity)
 
                             dict['mention'] = cell
                             dict['candidates'] = candidates

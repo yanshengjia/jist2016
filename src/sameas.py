@@ -14,6 +14,11 @@ class SameAs(object):
         self.table_path = table_path
         self.output_path = output_path
 
+    # 从 sameAs 文件中抽取三个知识库两两之间的 sameAs 关系
+    def extract_sameAs(self):
+        print
+
+
     def sameAs(self):
         print
 

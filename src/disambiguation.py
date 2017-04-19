@@ -18,6 +18,7 @@ from table import *
 
 
 class EntityDisambiguationGraph(object):
+    # kb_name: 知识库名称
     # table: 第i张表格，Table 类型对象
     # table_number: 表格的编号，即为 i
     # candidates: 当前表格中 mentions 的候选实体
@@ -29,7 +30,7 @@ class EntityDisambiguationGraph(object):
     # row_num: 当前表格的行数
     # col_num: 当前表格的列数
     # EDG: 当前表格及其候选实体生成的完成的 EDG
-    # miniEDG: 移除 entity-entity edge 的EDG (为了画图时节省时间)
+    # miniEDG: 去除 entity-entity Edge 的 EDG，为了更快速地画图
     # mention_node_begin: mention node 编号的开始
     # mention_node_end: mention node 编号的结束
     # entity_node_begin: entity node 编号的开始
@@ -37,7 +38,8 @@ class EntityDisambiguationGraph(object):
     # node_quantity: 所有节点的总数
     # A: 概率转移列表
     # r: 消岐结果概率列表
-    def __init__(self, table_number, table, candidates, graph_path, infobox_property, disambiguation_output_path):
+    def __init__(self, kb_name, table_number, table, candidates, graph_path, infobox_property, disambiguation_output_path):
+        self.kb_name = kb_name
         self.table_number = table_number
         self.table = table
         self.mention_quantity = table.mention_quantity
@@ -127,9 +129,10 @@ class EntityDisambiguationGraph(object):
                 continue
 
             for c in range(nCol):
-                mention = table.get_cell(r, c)
-                mention_candidates = candidates[r][c]['candidates']
+                mention = table.get_cell(r, c)                          # utf8
+                mention_candidates = candidates[r][c]['candidates']     # unicode
                 candidates_quantity = len(mention_candidates)
+                candidate_index = 0
 
                 if candidates_quantity == 0:
                     flag_NIL = True
@@ -139,20 +142,21 @@ class EntityDisambiguationGraph(object):
                 # 在 EDG 中添加 mention node
                 # ranking: [(entity node index i, the probability for the node i to be the referent entity of the mention)] 候选实体根据概率逆序排列的列表
                 EDG.add_node(mention_counter, type='mNode', mention=mention, NIL=flag_NIL, table=i, row=r, column=c, ranking=[], probability=float(mention_node_initial_importance), context=[])
-                EDG.node[mention_counter]['label'] = 'mention: ' + EDG.node[mention_counter]['mention'] + '\n' + str(EDG.node[mention_counter]['probability'])
+                EDG.node[mention_counter]['label'] = 'mention: ' + EDG.node[mention_counter]['mention']
                 EDG.node[mention_counter]['context'] = self.get_mention_context(r, c)
 
                 if flag_NIL == False:
                     # 在 EDG 中添加 entity node
                     # mNode_index: entity node 相邻的唯一一个 mention node 的编号
                     for candidate in mention_candidates:
-                        EDG.add_node(entity_counter, type='eNode', candidate=candidate, mNode_index=mention_counter, probability=float(0), context=[])
-                        EDG.node[entity_counter]['label'] = 'candidate: ' + EDG.node[entity_counter]['candidate'] + '\n' + str(EDG.node[entity_counter]['probability'])
+                        candidate = candidate.encode('utf8')
+                        candidate_index += 1
+                        EDG.add_node(entity_counter, type='eNode', candidate=candidate, index=candidate_index, mNode_index=mention_counter, probability=float(0), context=[])
+                        # EDG.node[entity_counter]['label'] = 'candidate' + str(EDG.node[entity_counter]['index']) + ': ' + EDG.node[entity_counter]['candidate']
                         EDG.node[entity_counter]['context'] = self.get_entity_context(candidate)
 
                         # 在 EDG 中添加 mention-entity edge
                         EDG.add_edge(mention_counter, entity_counter, type='meEdge', probability=float(0))
-                        EDG.edge[mention_counter][entity_counter]['label'] = str(EDG.edge[mention_counter][entity_counter]['probability'])
 
                         entity_counter += 1
                 mention_counter += 1
@@ -180,29 +184,52 @@ class EntityDisambiguationGraph(object):
     def load_entity_disambiguation_graph(self):
         self.EDG = nx.read_gpickle(self.edg_path)
 
-    # 画出来的 EDG 是不包含 entity-entity edge 的，因为如果要包含的话时间开销太大了
+    # 画出来的 EDG 图不包含 entity-entity Edge，否则时间开销太大
     def draw_entity_disambiguation_graph(self):
+        print 'Drawing Entity Disambiguation Graph......',
         graph_name = self.graph_path + 'edg' + str(self.table_number)
         write_dot(self.miniEDG, graph_name + '.dot')
         os.system('dot -Tsvg ' + graph_name + '.dot' + ' -o ' + graph_name + '.svg')
+        print 'Done!'
+
+    # String Similarity
+    # s1: string 1
+    # s2: string 2
+    def string_similarity(self, s1, s2):
+        s1 = s1.decode('utf8')
+        s2 = s2.decode('utf8')
+        edit_distance = Levenshtein.distance(s1, s2)
+        len_s1 = len(s1)
+        len_s2 = len(s2)
+
+        if len_s1 > len_s2:
+            max = len_s1
+        else:
+            max = len_s2
+
+        string_similarity = 1.0 - float(edit_distance) / max
+        return string_similarity
 
     # 计算 mention 和 entity 之间的字符串相似度特征 (String Similarity Feature)
     # m: mention node index
     # e: entity node index
     def strSim(self, m, e):
-        mention = self.EDG.node[m]['mention']
-        entity = self.EDG.node[e]['candidate']
+        mention = self.EDG.node[m]['mention']       # utf8
+        entity = self.EDG.node[e]['candidate']      # utf8
 
-        edit_distance = Levenshtein.distance(mention, entity)
-        len_mention = len(mention)
-        len_entity = len(entity)
+        if self.kb_name == 'baidubaike':            # 完整的实体，包括消岐义内容 real_entity[disambiguation]
+            split = entity.split('[')
+            real_entity = split[0]                  # 真实的实体，去除了消岐义内容 real_entity
 
-        if len_mention > len_entity:
-            max = len_mention
-        else:
-            max = len_entity
+        if self.kb_name == 'hudongbaike':           # 完整的实体，包括消岐义内容 real_entity [disambiguation]
+            split = entity.split(' [')
+            real_entity = split[0]                  # 真实的实体，去除了消岐义内容 real_entity
 
-        string_similarity = 1.0 - float(edit_distance) / max
+        if self.kb_name == 'zhwiki':                # 完整的实体，包括消岐义内容 real_entity (disambiguation)
+            split = entity.split(' (')
+            real_entity = split[0]                  # 真实的实体，去除了消岐义内容 real_entity
+
+        string_similarity = self.string_similarity(mention, real_entity)
         return string_similarity
 
     # Jaccard Similarity
@@ -354,11 +381,11 @@ class EntityDisambiguationGraph(object):
         EDG = self.EDG
         n = self.node_quantity
         damping_factor = 0.85
-        iterations = 10
+        iterations = 200
         A = [[0.0 for col in range(n)] for row in range(n)]
         E = [[1.0 for col in range(n)] for row in range(n)]
         r = [0.0 for i in range(n)]
-        delta = 0.001
+        delta = 0.000001
         flag_convergence = False
 
         # compute A[i][j]
@@ -423,7 +450,7 @@ class EntityDisambiguationGraph(object):
                     max_difference = difference
 
             if max_difference <= delta:
-                print 'At epoch ' + str(epoch) + ' convergence is reached!'
+                print 'At Epoch ' + str(epoch) + ' Convergence is Reached!'
                 matrix_r = matrix_r_next
                 flag_convergence = True
                 break
@@ -436,11 +463,12 @@ class EntityDisambiguationGraph(object):
             r[i] = r_list[i][0]
 
         if flag_convergence == False:
-            print 'After epoch ' + str(iterations) + ' iterative probability propagation is done!'
+            print 'After Epoch ' + str(iterations) + ' Iterative Probability Propagation is Done!'
 
-        # 计算 eNode 上的概率
+        # 计算 eNode 上的概率 并 打上标签
         for p in range(self.entity_node_begin, self.entity_node_end + 1):
             EDG.node[p]['probability'] = r[p]
+            self.miniEDG.node[p]['label'] = 'candidate' + str(EDG.node[p]['index']) + ': ' + EDG.node[p]['candidate'] + '\n' + str(EDG.node[p]['probability'])
 
         self.r = r
         self.EDG = EDG
@@ -542,6 +570,7 @@ class Disambiguation(object):
         # baidubaike
         if self.kb_name == "baidubaike":
             try:
+                kb_name = self.kb_name
                 tables = self.tables
                 baidubaike_graph_path = self.graph_path
                 baidubaike_disambiguation_output_path = self.disambiguation_output_path
@@ -555,17 +584,17 @@ class Disambiguation(object):
                     table = tables[i]
                     candidates = baidubaike_candidate_json[i]
 
-                    EDG_master = EntityDisambiguationGraph(i, table, candidates, baidubaike_graph_path, baidubaike_infobox_property, baidubaike_disambiguation_output_path)
+                    EDG_master = EntityDisambiguationGraph(kb_name, i, table, candidates, baidubaike_graph_path, baidubaike_infobox_property, baidubaike_disambiguation_output_path)
 
                     time1 = time.time()
 
                     EDG_master.build_entity_disambiguation_graph()
-                    # EDG_master.draw_entity_disambiguation_graph()
                     EDG_master.compute_el_impact_factors()
                     EDG_master.iterative_probability_propagation()
                     EDG_master.rank_candidates()
                     EDG_master.pick_entity()
                     EDG_master.save_entity_disambiguation_graph()
+                    EDG_master.draw_entity_disambiguation_graph()
 
                     time2 = time.time()
                     print 'Consumed Time: ' + str(time2 - time1) + ' s'
@@ -581,6 +610,7 @@ class Disambiguation(object):
         # hudongbaike
         if self.kb_name == "hudongbaike":
             try:
+                kb_name = self.kb_name
                 tables = self.tables
                 hudongbaike_graph_path = self.graph_path
                 hudongbaike_disambiguation_output_path = self.disambiguation_output_path
@@ -594,17 +624,17 @@ class Disambiguation(object):
                     table = tables[i]
                     candidates = hudongbaike_candidate_json[i]
 
-                    EDG_master = EntityDisambiguationGraph(i, table, candidates, hudongbaike_graph_path, hudongbaike_infobox_property, hudongbaike_disambiguation_output_path)
+                    EDG_master = EntityDisambiguationGraph(kb_name, table, candidates, hudongbaike_graph_path, hudongbaike_infobox_property, hudongbaike_disambiguation_output_path)
 
                     time1 = time.time()
 
                     EDG_master.build_entity_disambiguation_graph()
-                    # EDG_master.draw_entity_disambiguation_graph()
                     EDG_master.compute_el_impact_factors()
                     EDG_master.iterative_probability_propagation()
                     EDG_master.rank_candidates()
                     EDG_master.pick_entity()
                     EDG_master.save_entity_disambiguation_graph()
+                    EDG_master.draw_entity_disambiguation_graph()
 
                     time2 = time.time()
                     print 'Consumed Time: ' + str(time2 - time1) + ' s'
@@ -620,6 +650,7 @@ class Disambiguation(object):
         # zhwiki
         if self.kb_name == "zhwiki":
             try:
+                kb_name = self.kb_name
                 tables = self.tables
                 zhwiki_graph_path = self.graph_path
                 zhwiki_disambiguation_output_path = self.disambiguation_output_path
@@ -633,17 +664,17 @@ class Disambiguation(object):
                     table = tables[i]
                     candidates = zhwiki_candidate_json[i]
 
-                    EDG_master = EntityDisambiguationGraph(i, table, candidates, zhwiki_graph_path, zhwiki_infobox_property, zhwiki_disambiguation_output_path)
+                    EDG_master = EntityDisambiguationGraph(kb_name, table, candidates, zhwiki_graph_path, zhwiki_infobox_property, zhwiki_disambiguation_output_path)
 
                     time1 = time.time()
 
                     EDG_master.build_entity_disambiguation_graph()
-                    # EDG_master.draw_entity_disambiguation_graph()
                     EDG_master.compute_el_impact_factors()
                     EDG_master.iterative_probability_propagation()
                     EDG_master.rank_candidates()
                     EDG_master.pick_entity()
                     EDG_master.save_entity_disambiguation_graph()
+                    EDG_master.draw_entity_disambiguation_graph()
 
                     time2 = time.time()
                     print 'Consumed Time: ' + str(time2 - time1) + ' s'

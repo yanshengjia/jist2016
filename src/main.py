@@ -180,7 +180,7 @@ def main():
     print "Copyright @2017/3/1 Shengjia Yan. All Rights Reserved."
 
     # preprocess()
-    # candidate_generation()
+    candidate_generation()
     entity_disambiguation()
     # sameAs()
 
