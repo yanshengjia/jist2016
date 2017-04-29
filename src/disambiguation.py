@@ -69,7 +69,7 @@ class EntityDisambiguationGraph(object):
         mention_context = table.get_mention_context(r, c)
         return mention_context
 
-    # 获取一个 entity e 的上下文
+    # 获取一个 entity e 的上下文，来自 abstract 和 infobox_property
     # e: entity 字符串
     def get_entity_context(self, e):
         entity_context = []
@@ -624,7 +624,7 @@ class Disambiguation(object):
                     table = tables[i]
                     candidates = hudongbaike_candidate_json[i]
 
-                    EDG_master = EntityDisambiguationGraph(kb_name, table, candidates, hudongbaike_graph_path, hudongbaike_infobox_property, hudongbaike_disambiguation_output_path)
+                    EDG_master = EntityDisambiguationGraph(kb_name, i, table, candidates, hudongbaike_graph_path, hudongbaike_infobox_property, hudongbaike_disambiguation_output_path)
 
                     time1 = time.time()
 
@@ -664,7 +664,7 @@ class Disambiguation(object):
                     table = tables[i]
                     candidates = zhwiki_candidate_json[i]
 
-                    EDG_master = EntityDisambiguationGraph(kb_name, table, candidates, zhwiki_graph_path, zhwiki_infobox_property, zhwiki_disambiguation_output_path)
+                    EDG_master = EntityDisambiguationGraph(kb_name, i, table, candidates, zhwiki_graph_path, zhwiki_infobox_property, zhwiki_disambiguation_output_path)
 
                     time1 = time.time()
 

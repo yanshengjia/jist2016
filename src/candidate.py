@@ -20,11 +20,10 @@ class Candidate(object):
     # table_name: 表格文件的名称
     # table_path: 表格文件的路径
     # kb_name: 知识库名称
-    # entity_path: 知识库实体路径
-    # babelnet_path: 由 BabelNet 生成的同义词实体文件的路径
+    # entity_path: 知识库实体路径，文件中包含实体以及其同义词
     # candidate_path: 生成好的候选实体的输出路径
     # threshold: 筛选候选实体与 mention 的字符串相似度阈值
-    def __init__(self, table_name, table_path, kb_name, entity_path, babelnet_path, candidate_path):
+    def __init__(self, table_name, table_path, kb_name, entity_path, candidate_path):
         table_manager = TableManager(table_path)
         self.tables = table_manager.get_tables()  # tables[i][j][k]: 第i张表第j行第k列的单元格中的字符串
         self.table_name = table_name
@@ -32,9 +31,8 @@ class Candidate(object):
         self.table_path = table_path
         self.kb_name = kb_name
         self.entity_path = entity_path
-        self.babelnet_path = babelnet_path
         self.candidate_path = candidate_path
-        self.threshold = 0.6
+        self.threshold = 0.7
 
     # String Similarity
     # s1: string 1
@@ -59,32 +57,29 @@ class Candidate(object):
         if self.kb_name == "baidubaike":
             try:
                 tables = self.tables
-                baidubaike_entities = open(self.entity_path, 'r')
-                baidubaike_candidate = open(self.candidate_path, 'w')
-                baidubaike_entity_counter = 0
-                baidubaike_entity_url = []  # [{'entity': entity, 'url': url}]
+                baidubaike_entity_file = open(self.entity_path, 'r')
+                baidubaike_candidate_file = open(self.candidate_path, 'w')
+                baidubaike_entity_synonym = []  # [{'entity': entity, 'synonym': [synonym list]}]
                 baidubaike_entity_candidate = []    # 三维数组 baidubaike_entity_candidate[i][j][k]{'mention': m, 'candidates': [c1, c2, c3...]}
 
-                # 读取 baidubaike 的实体及其url，存入 entity_url 字典列表
-                for lines in baidubaike_entities.readlines():
-                    baidubaike_entity_counter += 1
-                    lines = lines.strip('\n')
+                # 读取 baidubaike 的实体及其同义词，存入 entity_synonym 字典列表
+                for line in baidubaike_entity_file.readlines():
+                    line = line.strip('\n')
 
                     # split
-                    split = lines.split('> <')
+                    split = line.split('> <')
                     entity = split[0]
-                    url = split[1]
+                    synonym = split[1]
 
                     # clean
                     entity = entity[1:]
-                    url = url[:-1]
+                    synonym = synonym[:-1]
 
                     # combine
                     dict = {}
                     dict['entity'] = entity
-                    dict['url'] = url
-                    baidubaike_entity_url.append(dict)
-
+                    dict['synonym'] = synonym.split(', ')
+                    baidubaike_entity_synonym.append(dict)
 
                 # 为所有表格中的每个单元格中的 mention 生成候选实体
                 # i: table number
@@ -109,12 +104,19 @@ class Candidate(object):
                                 row.append(dict)
                                 continue
 
-                            for entity_url in baidubaike_entity_url:
-                                entity = entity_url['entity']       # 完整的实体，包括消岐义内容 real_entity[disambiguation]
+                            for entity_synonym in baidubaike_entity_synonym:
+                                entity = entity_synonym['entity']       # 完整的实体，包括消岐义内容 real_entity[disambiguation]
                                 split = entity.split('[')
                                 real_entity = split[0]              # 真实的实体，去除了消岐义内容 real_entity
+                                synonym = entity_synonym['synonym']
+                                flag_synonym = False
 
-                                if cell in real_entity:
+                                for syn in synonym:
+                                    if cell in syn:
+                                        flag_synonym = True
+                                        break
+
+                                if cell in real_entity or flag_synonym:
                                     string_similarity = self.string_similarity(cell, real_entity)
 
                                     if string_similarity >= self.threshold:
@@ -130,45 +132,42 @@ class Candidate(object):
 
             finally:
                 baidubaike_entity_candidate_json = json.dumps(baidubaike_entity_candidate, ensure_ascii=False)
-                baidubaike_candidate.write(baidubaike_entity_candidate_json)
+                baidubaike_candidate_file.write(baidubaike_entity_candidate_json)
 
-                if baidubaike_entities:
-                    baidubaike_entities.close()
+                if baidubaike_entity_file:
+                    baidubaike_entity_file.close()
 
-                if baidubaike_candidate:
-                    baidubaike_candidate.close()
+                if baidubaike_candidate_file:
+                    baidubaike_candidate_file.close()
 
 
         # hudongbaike
         if self.kb_name == "hudongbaike":
             try:
                 tables = self.tables
-                hudongbaike_entities = open(self.entity_path, 'r')
-                hudongbaike_candidate = open(self.candidate_path, 'w')
-                hudongbaike_entity_counter = 0
-                hudongbaike_entity_url = []  # [{'entity': entity, 'url': url}]
-                hudongbaike_entity_candidate = []    # 三维数组 hudongbaike_entity_candidate[i][j][k]{'mention': m, 'candidates': [c1, c2, c3...]}
+                hudongbaike_entity_file = open(self.entity_path, 'r')
+                hudongbaike_candidate_file = open(self.candidate_path, 'w')
+                hudongbaike_entity_synonym = []  # [{'entity': entity, 'synonym': [synonym list]}]
+                hudongbaike_entity_candidate = []  # 三维数组 baidubaike_entity_candidate[i][j][k]{'mention': m, 'candidates': [c1, c2, c3...]}
 
-                # 读取 hudongbaike 的实体及其url，存入 entity_url 字典列表
-                for lines in hudongbaike_entities.readlines():
-                    hudongbaike_entity_counter += 1
-                    lines = lines.strip('\n')
+                # 读取 hudongbaike 的实体及其同义词，存入 entity_synonym 字典列表
+                for line in hudongbaike_entity_file.readlines():
+                    line = line.strip('\n')
 
                     # split
-                    split = lines.split('> <')
+                    split = line.split('> <')
                     entity = split[0]
-                    url = split[1]
+                    synonym = split[1]
 
                     # clean
                     entity = entity[1:]
-                    url = url[:-1]
+                    synonym = synonym[:-1]
 
                     # combine
                     dict = {}
                     dict['entity'] = entity
-                    dict['url'] = url
-                    hudongbaike_entity_url.append(dict)
-
+                    dict['synonym'] = synonym.split(', ')
+                    hudongbaike_entity_synonym.append(dict)
 
                 # 为所有表格中的每个单元格中的 mention 生成候选实体
                 # i: table number
@@ -193,12 +192,19 @@ class Candidate(object):
                                 row.append(dict)
                                 continue
 
-                            for entity_url in hudongbaike_entity_url:
-                                entity = entity_url['entity']       # 完整的实体，包括消岐义内容 real_entity [disambiguation]
-                                split = entity.split(' [')
-                                real_entity = split[0]              # 真实的实体，去除了消岐义内容 real_entity
+                            for entity_synonym in hudongbaike_entity_synonym:
+                                entity = entity_synonym['entity']  # 完整的实体，包括消岐义内容 real_entity[disambiguation]
+                                split = entity.split('[')
+                                real_entity = split[0]  # 真实的实体，去除了消岐义内容 real_entity
+                                synonym = entity_synonym['synonym']
+                                flag_synonym = False
 
-                                if cell in real_entity:
+                                for syn in synonym:
+                                    if cell in syn:
+                                        flag_synonym = True
+                                        break
+
+                                if cell in real_entity or flag_synonym:
                                     string_similarity = self.string_similarity(cell, real_entity)
 
                                     if string_similarity >= self.threshold:
@@ -214,45 +220,41 @@ class Candidate(object):
 
             finally:
                 hudongbaike_entity_candidate_json = json.dumps(hudongbaike_entity_candidate, ensure_ascii=False)
-                hudongbaike_candidate.write(hudongbaike_entity_candidate_json)
+                hudongbaike_candidate_file.write(hudongbaike_entity_candidate_json)
 
-                if hudongbaike_entities:
-                    hudongbaike_entities.close()
+                if hudongbaike_entity_file:
+                    hudongbaike_entity_file.close()
 
-                if hudongbaike_candidate:
-                    hudongbaike_candidate.close()
-
+                if hudongbaike_candidate_file:
+                    hudongbaike_candidate_file.close()
 
         # zhwiki
         if self.kb_name == "zhwiki":
             try:
                 tables = self.tables
-                zhwiki_entities = open(self.entity_path, 'r')
-                zhwiki_candidate = open(self.candidate_path, 'w')
-                zhwiki_entity_counter = 0
-                zhwiki_entity_url = []  # [{'entity': entity, 'url': url}]
-                zhwiki_entity_candidate = []    # 三维数组 zhwiki_entity_candidate[i][j][k]{'mention': m, 'candidates': [c1, c2, c3...]}
+                zhwiki_entity_file = open(self.entity_path, 'r')
+                zhwiki_candidate_file = open(self.candidate_path, 'w')
+                zhwiki_entity_synonym = []  # [{'entity': entity, 'synonym': [synonym list]}]
+                zhwiki_entity_candidate = []  # 三维数组 baidubaike_entity_candidate[i][j][k]{'mention': m, 'candidates': [c1, c2, c3...]}
 
-                # 读取 zhwiki 的实体及其url，存入 entity_url 字典列表
-                for lines in zhwiki_entities.readlines():
-                    zhwiki_entity_counter += 1
-                    lines = lines.strip('\n')
+                # 读取 zhwiki 的实体及其同义词，存入 entity_synonym 字典列表
+                for line in zhwiki_entity_file.readlines():
+                    line = line.strip('\n')
 
                     # split
-                    split = lines.split('> <')
+                    split = line.split('> <')
                     entity = split[0]
-                    url = split[1]
+                    synonym = split[1]
 
                     # clean
                     entity = entity[1:]
-                    url = url[:-1]
+                    synonym = synonym[:-1]
 
                     # combine
                     dict = {}
                     dict['entity'] = entity
-                    dict['url'] = url
-                    zhwiki_entity_url.append(dict)
-
+                    dict['synonym'] = synonym.split(', ')
+                    zhwiki_entity_synonym.append(dict)
 
                 # 为所有表格中的每个单元格中的 mention 生成候选实体
                 # i: table number
@@ -277,12 +279,19 @@ class Candidate(object):
                                 row.append(dict)
                                 continue
 
-                            for entity_url in zhwiki_entity_url:
-                                entity = entity_url['entity']   # 完整的实体，包括消岐义内容 real_entity (disambiguation)
-                                split = entity.split(' (')
-                                real_entity = split[0]          # 真实的实体，去除了消岐义内容 real_entity
+                            for entity_synonym in zhwiki_entity_synonym:
+                                entity = entity_synonym['entity']  # 完整的实体，包括消岐义内容 real_entity[disambiguation]
+                                split = entity.split('[')
+                                real_entity = split[0]  # 真实的实体，去除了消岐义内容 real_entity
+                                synonym = entity_synonym['synonym']
+                                flag_synonym = False
 
-                                if cell in real_entity:
+                                for syn in synonym:
+                                    if cell in syn:
+                                        flag_synonym = True
+                                        break
+
+                                if cell in real_entity or flag_synonym:
                                     string_similarity = self.string_similarity(cell, real_entity)
 
                                     if string_similarity >= self.threshold:
@@ -298,10 +307,10 @@ class Candidate(object):
 
             finally:
                 zhwiki_entity_candidate_json = json.dumps(zhwiki_entity_candidate, ensure_ascii=False)
-                zhwiki_candidate.write(zhwiki_entity_candidate_json)
+                zhwiki_candidate_file.write(zhwiki_entity_candidate_json)
 
-                if zhwiki_entities:
-                    zhwiki_entities.close()
+                if zhwiki_entity_file:
+                    zhwiki_entity_file.close()
 
-                if zhwiki_candidate:
-                    zhwiki_candidate.close()
+                if zhwiki_candidate_file:
+                    zhwiki_candidate_file.close()

@@ -15,55 +15,90 @@ from sameas import *
 def preprocess():
     # baidubaike
     kb_name = 'baidubaike'
-    kb_labels_path = "../../../data/raw/kb_labels/3.0_baidubaike_labels_zh.nt"
-    entity_url_output_path = "../../../data/entity/baidubaike_entities.txt"
+    kb_labels_path = '../../../data/raw/kb_labels/3.0_baidubaike_labels_zh.nt'
+    entity_url_output_path = '../../../data/entity/baidubaike_entity_url.txt'
     kb_infobox_properties_path = '../../../data/raw/kb_infobox_properties/3.0_baidubaike_infobox_properties_zh.nt'
     infobox_properties_output_path = '../../../data/property/baidubaike_infobox_properties.txt'
+    kb_abstracts_path = '../../../data/raw/kb_abstracts/3.0_baidubaike_abstracts_zh.nt'
+    abstracts_output_path = '../../../data/abstract/baidubaike_abstracts.txt'
+    synonym_path = '../../../data/synonym/baidubaike_entities_syn.txt'
+    entity_synonym_output_path = '../../../data/entity/baidubaike_entity_synonym.txt'
 
-    extracter_baidubaike = Preprocess(kb_name, kb_labels_path, entity_url_output_path, kb_infobox_properties_path, infobox_properties_output_path)
+    extracter_baidubaike = Preprocess(kb_name, kb_labels_path, entity_url_output_path, kb_infobox_properties_path, infobox_properties_output_path, kb_abstracts_path, abstracts_output_path, synonym_path, entity_synonym_output_path)
 
-    print 'Extracting entities from ' + kb_name + ' labels......',
-    extracter_baidubaike.extract_entity()
-    print 'Done!'
+    # print 'Extracting entities from ' + kb_name + ' labels......',
+    # extracter_baidubaike.extract_entity()
+    # print 'Done!'
+    #
+    # print 'Extracting infobox properties from ' + kb_name + ' infobox properties......',
+    # extracter_baidubaike.extract_infobox_properties()
+    # print 'Done!'
+    #
+    # print 'Extracting abstracts from ' + kb_name + ' abstracts......',
+    # extracter_baidubaike.extract_abstracts()
+    # print 'Done!'
 
-    print 'Extracting infobox properties from ' + kb_name + ' infobox properties......',
-    extracter_baidubaike.extract_infobox_properties()
+    print 'Conbining entities and synonyms of ' + kb_name + '......',
+    extracter_baidubaike.conbine_entity_synonym()
     print 'Done!'
 
 
     # hudongbaike
     kb_name = 'hudongbaike'
-    kb_labels_path = "../../../data/raw/kb_labels/3.0_hudongbaike_labels_zh.nt"
-    entity_url_output_path = "../../../data/entity/hudongbaike_entities.txt"
+    kb_labels_path = '../../../data/raw/kb_labels/3.0_hudongbaike_labels_zh.nt'
+    entity_url_output_path = '../../../data/entity/hudongbaike_entity_url.txt'
     kb_infobox_properties_path = '../../../data/raw/kb_infobox_properties/3.0_hudongbaike_infobox_properties_zh.nt'
     infobox_properties_output_path = '../../../data/property/hudongbaike_infobox_properties.txt'
+    kb_abstracts_path = '../../../data/raw/kb_abstracts/3.0_hudongbaike_abstracts_zh.nt'
+    abstracts_output_path = '../../../data/abstract/hudongbaike_abstracts.txt'
+    synonym_path = '../../../data/synonym/hudongbaike_entities_syn.txt'
+    entity_synonym_output_path = '../../../data/entity/hudongbaike_entity_synonym.txt'
 
-    extracter_hudongbaike = Preprocess(kb_name, kb_labels_path, entity_url_output_path, kb_infobox_properties_path, infobox_properties_output_path)
+    extracter_hudongbaike = Preprocess(kb_name, kb_labels_path, entity_url_output_path, kb_infobox_properties_path, infobox_properties_output_path, kb_abstracts_path, abstracts_output_path, synonym_path, entity_synonym_output_path)
 
-    print 'Extracting entities from ' + kb_name + ' labels......',
-    extracter_hudongbaike.extract_entity()
+    # print 'Extracting entities from ' + kb_name + ' labels......',
+    # extracter_hudongbaike.extract_entity()
+    # print 'Done!'
+    #
+    # print 'Extracting infobox properties from ' + kb_name + ' infobox properties......',
+    # extracter_hudongbaike.extract_infobox_properties()
+    # print 'Done!'
+    #
+    # print 'Extracting abstracts from ' + kb_name + ' abstracts......',
+    # extracter_hudongbaike.extract_abstracts()
+    # print 'Done!'
+
+    print 'Conbining entities and synonyms of ' + kb_name + '......',
+    extracter_hudongbaike.conbine_entity_synonym()
     print 'Done!'
-
-    print 'Extracting infobox properties from ' + kb_name + ' infobox properties......',
-    extracter_hudongbaike.extract_infobox_properties()
-    print 'Done!'
-
 
     # zhwiki
     kb_name = 'zhwiki'
-    kb_labels_path = "../../../data/raw/kb_labels/3.1_zhwiki_labels_zh.nt"
-    entity_url_output_path = "../../../data/entity/zhwiki_entities.txt"
+    kb_labels_path = '../../../data/raw/kb_labels/3.1_zhwiki_labels_zh.nt'
+    entity_url_output_path = '../../../data/entity/zhwiki_entity_url.txt'
     kb_infobox_properties_path = '../../../data/raw/kb_infobox_properties/2.0_zhwiki_infobox_properties_zh.nt'
     infobox_properties_output_path = '../../../data/property/zhwiki_infobox_properties.txt'
+    kb_abstracts_path = '../../../data/raw/kb_abstracts/2.0_zhwiki_abstracts_zh.nt'
+    abstracts_output_path = '../../../data/abstract/zhwiki_abstracts.txt'
+    synonym_path = '../../../data/synonym/zhwiki_entities_syn.txt'
+    entity_synonym_output_path = '../../../data/entity/zhwiki_entity_synonym.txt'
 
-    extracter_zhwiki = Preprocess(kb_name, kb_labels_path, entity_url_output_path, kb_infobox_properties_path, infobox_properties_output_path)
+    extracter_zhwiki = Preprocess(kb_name, kb_labels_path, entity_url_output_path, kb_infobox_properties_path, infobox_properties_output_path, kb_abstracts_path, abstracts_output_path, synonym_path, entity_synonym_output_path)
 
-    print 'Extracting entities from ' + kb_name + ' labels......',
-    extracter_zhwiki.extract_entity()
-    print 'Done!'
+    # print 'Extracting entities from ' + kb_name + ' labels......',
+    # extracter_zhwiki.extract_entity()
+    # print 'Done!'
+    #
+    # print 'Extracting infobox properties from ' + kb_name + ' infobox properties......',
+    # extracter_zhwiki.extract_infobox_properties()
+    # print 'Done!'
+    #
+    # print 'Extracting abstracts from ' + kb_name + ' abstracts......',
+    # extracter_zhwiki.extract_abstracts()
+    # print 'Done!'
 
-    print 'Extracting infobox properties from ' + kb_name + ' infobox properties......',
-    extracter_zhwiki.extract_infobox_properties()
+    print 'Conbining entities and synonyms of ' + kb_name + '......',
+    extracter_zhwiki.conbine_entity_synonym()
     print 'Done!'
 
 
@@ -73,11 +108,10 @@ def candidate_generation():
     table_name = 'table_123'
     table_path = '../../../data/table/table_123.xls'
     kb_name = 'baidubaike'
-    entity_path = '../../../data/entity/baidubaike_entities.txt'
-    babelnet_path = 'BabelNet'
+    entity_path = '../../../data/entity/baidubaike_entity_synonym.txt'
     candidate_path = '../../../data/candidate/baidubaike_candidate_entities.txt'
 
-    baidubaike_candidate_generater = Candidate(table_name, table_path, kb_name, entity_path, babelnet_path, candidate_path)
+    baidubaike_candidate_generater = Candidate(table_name, table_path, kb_name, entity_path, candidate_path)
 
     print 'Generating candidate entities for mentions based on ' + kb_name + '......',
     baidubaike_candidate_generater.generate_candidate()
@@ -88,11 +122,10 @@ def candidate_generation():
     table_name = 'table_123'
     table_path = '../../../data/table/table_123.xls'
     kb_name = 'hudongbaike'
-    entity_path = '../../../data/entity/hudongbaike_entities.txt'
-    babelnet_path = 'BabelNet'
+    entity_path = '../../../data/entity/hudongbaike_entity_synonym.txt'
     candidate_path = '../../../data/candidate/hudongbaike_candidate_entities.txt'
 
-    hudongbaike_candidate_generater = Candidate(table_name, table_path, kb_name, entity_path, babelnet_path, candidate_path)
+    hudongbaike_candidate_generater = Candidate(table_name, table_path, kb_name, entity_path, candidate_path)
 
     print 'Generating candidate entities for mentions based on ' + kb_name + '......',
     hudongbaike_candidate_generater.generate_candidate()
@@ -103,11 +136,10 @@ def candidate_generation():
     table_name = 'table_123'
     table_path = '../../../data/table/table_123.xls'
     kb_name = 'zhwiki'
-    entity_path = '../../../data/entity/zhwiki_entities.txt'
-    babelnet_path = 'BabelNet'
+    entity_path = '../../../data/entity/zhwiki_entity_synonym.txt'
     candidate_path = '../../../data/candidate/zhwiki_candidate_entities.txt'
 
-    zhwiki_candidate_generater = Candidate(table_name, table_path, kb_name, entity_path, babelnet_path, candidate_path)
+    zhwiki_candidate_generater = Candidate(table_name, table_path, kb_name, entity_path, candidate_path)
 
     print 'Generating candidate entities for mentions based on ' + kb_name + '......',
     zhwiki_candidate_generater.generate_candidate()
@@ -179,9 +211,9 @@ def main():
     print "Version 1.0"
     print "Copyright @2017/3/1 Shengjia Yan. All Rights Reserved."
 
-    # preprocess()
-    candidate_generation()
-    entity_disambiguation()
+    preprocess()
+    # candidate_generation()
+    # entity_disambiguation()
     # sameAs()
 
 if __name__ == "__main__":
