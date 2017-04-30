@@ -578,8 +578,8 @@ class Preprocess(object):
                 if hudongbaike_entity_file:
                     hudongbaike_entity_file.close()
 
-                if hudongbaike_synonym:
-                    hudongbaike_synonym.close()
+                if hudongbaike_synonym_file:
+                    hudongbaike_synonym_file.close()
 
                 if hudongbaike_entity_synonym_file:
                     hudongbaike_entity_synonym_file.close()

@@ -8,12 +8,12 @@
 import Levenshtein
 import time
 import copy
-import pickle
 import networkx as nx
 from networkx.drawing.nx_agraph import write_dot
 import numpy as np
 import os
 import json
+import jieba
 from table import *
 
 
@@ -25,6 +25,7 @@ class EntityDisambiguationGraph(object):
     # graph_path: EDG 图片输出路径
     # edg_path: EDG 输出路径
     # infobox_property: 知识库的 infobox_property 文件，用于计算 IsRDF 特征和获取实体上下文
+    # abstracts: 知识库的 abstracts 文件，用于获取实体的上下文
     # disambiguation_result_path: 消岐结果输出路径
     # mention_quantity: 当前表格中的 mention 数量
     # row_num: 当前表格的行数
@@ -38,7 +39,7 @@ class EntityDisambiguationGraph(object):
     # node_quantity: 所有节点的总数
     # A: 概率转移列表
     # r: 消岐结果概率列表
-    def __init__(self, kb_name, table_number, table, candidates, graph_path, infobox_property, disambiguation_output_path):
+    def __init__(self, kb_name, table_number, table, candidates, graph_path, infobox_property, abstracts, disambiguation_output_path):
         self.kb_name = kb_name
         self.table_number = table_number
         self.table = table
@@ -51,6 +52,7 @@ class EntityDisambiguationGraph(object):
         self.graph_path = graph_path
         self.edg_path = graph_path + 'edg' + str(table_number) + '.txt'
         self.infobox_property = infobox_property
+        self.abstracts = abstracts
         self.disambiguation_result_path = disambiguation_output_path + str(table_number) + '.txt'
         self.mention_node_begin = 0
         self.mention_node_end = self.mention_quantity - 1
@@ -74,6 +76,7 @@ class EntityDisambiguationGraph(object):
     def get_entity_context(self, e):
         entity_context = []
 
+        # 从 infobox properties 中找实体的上下文
         infobox_property = self.infobox_property
 
         for rdf in infobox_property.readlines():
@@ -89,12 +92,40 @@ class EntityDisambiguationGraph(object):
             object = object[:-1]
 
             if e == subject:
+                object = object.decode('utf8')
                 entity_context.append(object)
 
             if e == object:
+                subject = subject.decode('utf8')
                 entity_context.append(subject)
 
-        return entity_context
+        # 从 abstracts 中找实体的上下文
+        abstracts = self.abstracts
+        seg_list = []
+
+        for line in abstracts.readlines():
+            line = line.strip('\n')
+
+            # split
+            split = line.split('> <')
+            entity = split[0]
+            abstract = split[1]
+
+            # clean
+            entity = entity[1:]
+            abstract = abstract[:-1]
+
+            if e == entity:
+                seg_list = jieba.lcut(abstract)     # unicode
+
+                if entity in seg_list:
+                    seg_list.remove(entity)     # 移除摘要中的第一个出现的 entity，之后出现的 entity 都认为是上下文
+
+                break
+
+        entity_context.extend(seg_list)
+
+        return entity_context   # unicode
 
     # Building Entity Disambiguation Graph
     # mNode: mention node
@@ -129,7 +160,7 @@ class EntityDisambiguationGraph(object):
                 continue
 
             for c in range(nCol):
-                mention = table.get_cell(r, c)                          # utf8
+                mention = table.get_cell(r, c)                          # unicode
                 mention_candidates = candidates[r][c]['candidates']     # unicode
                 candidates_quantity = len(mention_candidates)
                 candidate_index = 0
@@ -149,7 +180,6 @@ class EntityDisambiguationGraph(object):
                     # 在 EDG 中添加 entity node
                     # mNode_index: entity node 相邻的唯一一个 mention node 的编号
                     for candidate in mention_candidates:
-                        candidate = candidate.encode('utf8')
                         candidate_index += 1
                         EDG.add_node(entity_counter, type='eNode', candidate=candidate, index=candidate_index, mNode_index=mention_counter, probability=float(0), context=[])
                         # EDG.node[entity_counter]['label'] = 'candidate' + str(EDG.node[entity_counter]['index']) + ': ' + EDG.node[entity_counter]['candidate']
@@ -214,20 +244,20 @@ class EntityDisambiguationGraph(object):
     # m: mention node index
     # e: entity node index
     def strSim(self, m, e):
-        mention = self.EDG.node[m]['mention']       # utf8
-        entity = self.EDG.node[e]['candidate']      # utf8
+        mention = self.EDG.node[m]['mention']       # unicode
+        entity = self.EDG.node[e]['candidate']      # unicode
 
         if self.kb_name == 'baidubaike':            # 完整的实体，包括消岐义内容 real_entity[disambiguation]
             split = entity.split('[')
-            real_entity = split[0]                  # 真实的实体，去除了消岐义内容 real_entity
+            real_entity = split[0]                  # 真实的实体 (unicode)，去除了消岐义内容 real_entity
 
         if self.kb_name == 'hudongbaike':           # 完整的实体，包括消岐义内容 real_entity [disambiguation]
             split = entity.split(' [')
-            real_entity = split[0]                  # 真实的实体，去除了消岐义内容 real_entity
+            real_entity = split[0]                  # 真实的实体 (unicode)，去除了消岐义内容 real_entity
 
         if self.kb_name == 'zhwiki':                # 完整的实体，包括消岐义内容 real_entity (disambiguation)
             split = entity.split(' (')
-            real_entity = split[0]                  # 真实的实体，去除了消岐义内容 real_entity
+            real_entity = split[0]                  # 真实的实体 (unicode)，去除了消岐义内容 real_entity
 
         string_similarity = self.string_similarity(mention, real_entity)
         return string_similarity
@@ -381,7 +411,7 @@ class EntityDisambiguationGraph(object):
         EDG = self.EDG
         n = self.node_quantity
         damping_factor = 0.85
-        iterations = 200
+        iterations = 10000
         A = [[0.0 for col in range(n)] for row in range(n)]
         E = [[1.0 for col in range(n)] for row in range(n)]
         r = [0.0 for i in range(n)]
@@ -552,8 +582,9 @@ class Disambiguation(object):
     # candidate_path: 候选实体文件的路径
     # graph_path: Entity Disambiguation Graph 存储路径
     # disambiguation_output_path: 消岐结果文件的路径
-    # infobox_property_path: 知识库的 infobox_property 文件的路径
-    def __init__(self, table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path):
+    # infobox_property_path: 知识库的 infobox_property 文件路径
+    # abstracts_path: 知识库的 abstracts_path 文件路径
+    def __init__(self, table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path, abstracts_path):
         table_manager = TableManager(table_path)
         self.tables = table_manager.get_tables()  # tables 是 Table 类型数组
         self.table_name = table_name
@@ -565,6 +596,7 @@ class Disambiguation(object):
         self.graph_path = graph_path
         self.disambiguation_output_path = disambiguation_output_path
         self.infobox_property_path = infobox_property_path
+        self.abstracts_path = abstracts_path
 
     def disambiguation(self):
         # baidubaike
@@ -578,13 +610,14 @@ class Disambiguation(object):
                 baidubaike_candidate = baidubaike_candidate_file.read()
                 baidubaike_candidate_json = json.loads(baidubaike_candidate, encoding='utf8')    # kb_candidate[nTable][nRow][nCol] = dict{'mention': m, 'candidates': []}
                 baidubaike_infobox_property = open(self.infobox_property_path, 'r')
+                baidubaike_abstracts = open(self.abstracts_path, 'r')
 
                 # i: 第i张表格，从0开始
                 for i in range(self.table_quantity):
                     table = tables[i]
                     candidates = baidubaike_candidate_json[i]
 
-                    EDG_master = EntityDisambiguationGraph(kb_name, i, table, candidates, baidubaike_graph_path, baidubaike_infobox_property, baidubaike_disambiguation_output_path)
+                    EDG_master = EntityDisambiguationGraph(kb_name, i, table, candidates, baidubaike_graph_path, baidubaike_infobox_property, baidubaike_abstracts, baidubaike_disambiguation_output_path)
 
                     time1 = time.time()
 
@@ -599,12 +632,16 @@ class Disambiguation(object):
                     time2 = time.time()
                     print 'Consumed Time: ' + str(time2 - time1) + ' s'
                     print
+
             finally:
                 if baidubaike_candidate_file:
                     baidubaike_candidate_file.close()
 
                 if baidubaike_infobox_property:
                     baidubaike_infobox_property.close()
+
+                if baidubaike_abstracts:
+                    baidubaike_abstracts.close()
 
 
         # hudongbaike
@@ -618,13 +655,14 @@ class Disambiguation(object):
                 hudongbaike_candidate = hudongbaike_candidate_file.read()
                 hudongbaike_candidate_json = json.loads(hudongbaike_candidate, encoding='utf8')    # kb_candidate[nTable][nRow][nCol] = dict{'mention': m, 'candidates': []}
                 hudongbaike_infobox_property = open(self.infobox_property_path, 'r')
+                hudongbaike_abstracts = open(self.abstracts_path, 'r')
 
                 # i: 第i张表格，从0开始
                 for i in range(self.table_quantity):
                     table = tables[i]
                     candidates = hudongbaike_candidate_json[i]
 
-                    EDG_master = EntityDisambiguationGraph(kb_name, i, table, candidates, hudongbaike_graph_path, hudongbaike_infobox_property, hudongbaike_disambiguation_output_path)
+                    EDG_master = EntityDisambiguationGraph(kb_name, i, table, candidates, hudongbaike_graph_path, hudongbaike_infobox_property, hudongbaike_abstracts, hudongbaike_disambiguation_output_path)
 
                     time1 = time.time()
 
@@ -639,12 +677,16 @@ class Disambiguation(object):
                     time2 = time.time()
                     print 'Consumed Time: ' + str(time2 - time1) + ' s'
                     print
+
             finally:
                 if hudongbaike_candidate_file:
                     hudongbaike_candidate_file.close()
 
                 if hudongbaike_infobox_property:
                     hudongbaike_infobox_property.close()
+
+                if hudongbaike_abstracts:
+                    hudongbaike_abstracts.close()
 
 
         # zhwiki
@@ -658,13 +700,14 @@ class Disambiguation(object):
                 zhwiki_candidate = zhwiki_candidate_file.read()
                 zhwiki_candidate_json = json.loads(zhwiki_candidate, encoding='utf8')    # kb_candidate[nTable][nRow][nCol] = dict{'mention': m, 'candidates': []}
                 zhwiki_infobox_property = open(self.infobox_property_path, 'r')
+                zhwiki_abstracts = open(self.abstracts_path, 'r')
 
                 # i: 第i张表格，从0开始
                 for i in range(self.table_quantity):
                     table = tables[i]
                     candidates = zhwiki_candidate_json[i]
 
-                    EDG_master = EntityDisambiguationGraph(kb_name, i, table, candidates, zhwiki_graph_path, zhwiki_infobox_property, zhwiki_disambiguation_output_path)
+                    EDG_master = EntityDisambiguationGraph(kb_name, i, table, candidates, zhwiki_graph_path, zhwiki_infobox_property, zhwiki_abstracts, zhwiki_disambiguation_output_path)
 
                     time1 = time.time()
 
@@ -679,10 +722,14 @@ class Disambiguation(object):
                     time2 = time.time()
                     print 'Consumed Time: ' + str(time2 - time1) + ' s'
                     print
+
             finally:
                 if zhwiki_candidate_file:
                     zhwiki_candidate_file.close()
 
                 if zhwiki_infobox_property:
                     zhwiki_infobox_property.close()
+
+                if zhwiki_abstracts:
+                    zhwiki_abstracts.close()
 

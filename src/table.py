@@ -17,9 +17,9 @@ class Table(object):
         self.col_num = col_num
         self.mention_quantity = (row_num - 1) * col_num
 
-    # 获取表格中位于 (i, j) 处的单元格值 (utf8)
+    # 获取表格中位于 (i, j) 处的单元格值 (unicode)
     def get_cell(self, i, j):
-        return self.table[i][j].encode('utf8')
+        return self.table[i][j]
 
     # 获取表格中 mention 的数量
     # 一开始认为表格中所有单元格中的字符串都是 mention，如果有链接不到实体的 mention，之后给它打一个标签 NIL 表示 "无法链接"

@@ -6,16 +6,30 @@
 # 实验的第四步：利用多知识库间sameAs关系提升链接质量
 
 from urllib import unquote
+import networkx as nx
+from table import *
 
 
 class SameAs(object):
     # table_name: 表格文件的名称
     # table_path: 表格文件的路径
-    # output_path: 生成好的候选实体的输出路径
-    def __init__(self, table_name, table_path, output_path):
+    # baidubaike_edg_path: baidubaike 的实体消岐图路径
+    # hudongbaike_edg_path: hudongbaike 的实体消岐图路径
+    # zhwiki_edg_path: zhwiki 的实体消岐图路径
+    # result_path: 最终实体链接结果的输出路径
+    def __init__(self, table_name, table_path, baidubaike_edg_path, hudongbaike_edg_path, zhwiki_edg_path, result_path):
+        table_manager = TableManager(table_path)
+        self.tables = table_manager.get_tables()  # 表格文件中所有表格，tables 是 Table 类型数组
         self.table_name = table_name
         self.table_path = table_path
-        self.output_path = output_path
+        self.table_quantity = table_manager.table_quantity
+        self.baidubaike_edg_path = baidubaike_edg_path
+        self.hudongbaike_edg_path = hudongbaike_edg_path
+        self.zhwiki_edg_path = zhwiki_edg_path
+        self.result_path = result_path
+        self.baidubaike_edg = nx.Graph()
+        self.hudongbaike_edg = nx.Graph()
+        self.zhwiki_edg = nx.Graph()
 
     # 从 sameAs 文件中抽取三个知识库两两之间的 sameAs 关系
     def extract_sameAs(self):
@@ -134,7 +148,34 @@ class SameAs(object):
             if zhwiki_baidubaike_sameas_ofile:
                 zhwiki_baidubaike_sameas_ofile.close()
 
-    # 挑选每个 mention 的候选实体概率排名列表中的前3个
-    def sameAs(self):
-        print
+    # 加载实体消岐图
+    # table_number: 当前表格的编号
+    def load_entity_disambiguation_graph(self, table_number):
+        # baidubaike
+        baidubaike_edg_path = self.baidubaike_edg_path + 'edg' + str(table_number) + '.txt'
+        self.baidubaike_edg = nx.read_gpickle(baidubaike_edg_path)
+
+        # hudongbaike
+        hudongbaike_edg_path = self.hudongbaike_edg_path + 'edg' + str(table_number) + '.txt'
+        self.hudongbaike_edg = nx.read_gpickle(hudongbaike_edg_path)
+
+        # zhwiki
+        zhwiki_edg_path = self.zhwiki_edg_path + 'edg' + str(table_number) + '.txt'
+        self.zhwiki_edg = nx.read_gpickle(zhwiki_edg_path)
+
+    # 挑选每个 mention 的候选实体概率排名列表中的前3个，来做多知识库消岐
+    def rerank(self):
+        tables = self.tables
+
+        # i: 第i张表格，从0开始
+        for i in range(self.table_quantity):
+            table = tables[i]
+            table_number = i
+            mention_quantity = table.mention_quantity
+
+            self.load_entity_disambiguation_graph(table_number)
+
+            baidubaike_edg = self.baidubaike_edg
+            hudongbaike_edg = self.hudongbaike_edg
+            zhwiki_edg = self.zhwiki_edg
 

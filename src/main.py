@@ -4,6 +4,7 @@
 # Date: 2017/3/3
 # Email: sjyan@seu.edu.cn
 # 总控程序
+# 系统内部所有数据都是 unicode，处理好的文件都以 utf8 编码保存
 
 from preprocess import *
 from candidate import *
@@ -37,10 +38,10 @@ def preprocess():
     # print 'Extracting abstracts from ' + kb_name + ' abstracts......',
     # extracter_baidubaike.extract_abstracts()
     # print 'Done!'
-
-    print 'Conbining entities and synonyms of ' + kb_name + '......',
-    extracter_baidubaike.conbine_entity_synonym()
-    print 'Done!'
+    #
+    # print 'Conbining entities and synonyms of ' + kb_name + '......',
+    # extracter_baidubaike.conbine_entity_synonym()
+    # print 'Done!'
 
 
     # hudongbaike
@@ -67,10 +68,10 @@ def preprocess():
     # print 'Extracting abstracts from ' + kb_name + ' abstracts......',
     # extracter_hudongbaike.extract_abstracts()
     # print 'Done!'
-
-    print 'Conbining entities and synonyms of ' + kb_name + '......',
-    extracter_hudongbaike.conbine_entity_synonym()
-    print 'Done!'
+    #
+    # print 'Conbining entities and synonyms of ' + kb_name + '......',
+    # extracter_hudongbaike.conbine_entity_synonym()
+    # print 'Done!'
 
     # zhwiki
     kb_name = 'zhwiki'
@@ -96,10 +97,10 @@ def preprocess():
     # print 'Extracting abstracts from ' + kb_name + ' abstracts......',
     # extracter_zhwiki.extract_abstracts()
     # print 'Done!'
-
-    print 'Conbining entities and synonyms of ' + kb_name + '......',
-    extracter_zhwiki.conbine_entity_synonym()
-    print 'Done!'
+    #
+    # print 'Conbining entities and synonyms of ' + kb_name + '......',
+    # extracter_zhwiki.conbine_entity_synonym()
+    # print 'Done!'
 
 
 # Step 2: 候选实体生成
@@ -157,8 +158,9 @@ def entity_disambiguation():
     graph_path = '../../../data/disambiguation/baidubaike/graph/'
     disambiguation_output_path = '../../../data/disambiguation/baidubaike/result/'
     infobox_property_path = '../../../data/property/baidubaike_infobox_properties.txt'
+    abstracts_path = '../../../data/abstract/baidubaike_abstracts.txt'
 
-    baidubaike_judger = Disambiguation(table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path)
+    baidubaike_judger = Disambiguation(table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path, abstracts_path)
 
     print 'Disambiguating candidate entities based on ' + kb_name + ':'
     baidubaike_judger.disambiguation()
@@ -173,8 +175,9 @@ def entity_disambiguation():
     graph_path = '../../../data/disambiguation/hudongbaike/graph/'
     disambiguation_output_path = '../../../data/disambiguation/hudongbaike/result/'
     infobox_property_path = '../../../data/property/hudongbaike_infobox_properties.txt'
+    abstracts_path = '../../../data/abstract/hudongbaike_abstracts.txt'
 
-    hudongbaike_judger = Disambiguation(table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path)
+    hudongbaike_judger = Disambiguation(table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path, abstracts_path)
 
     print 'Disambiguating candidate entities based on ' + kb_name + ':'
     hudongbaike_judger.disambiguation()
@@ -189,8 +192,9 @@ def entity_disambiguation():
     graph_path = '../../../data/disambiguation/zhwiki/graph/'
     disambiguation_output_path = '../../../data/disambiguation/zhwiki/result/'
     infobox_property_path = '../../../data/property/zhwiki_infobox_properties.txt'
+    abstracts_path = '../../../data/abstract/zhwiki_abstracts.txt'
 
-    zhwiki_judger = Disambiguation(table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path)
+    zhwiki_judger = Disambiguation(table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path, abstracts_path)
 
     print 'Disambiguating candidate entities based on ' + kb_name + ':'
     zhwiki_judger.disambiguation()
@@ -200,20 +204,27 @@ def entity_disambiguation():
 def sameAs():
     print 'Improving entity linking with multiple linked KBs......',
 
-    multiple_kb_improver = SameAs()
-    multiple_kb_improver.sameAs()
+    table_name = 'table_123'
+    table_path = '../../../data/table/table_123.xls'
+    baidubaike_edg_path = '../../../data/disambiguation/baidubaike/graph/'
+    hudongbaike_edg_path = '../../../data/disambiguation/hudongbaike/graph/'
+    zhwiki_edg_path = '../../../data/disambiguation/zhwiki/graph/'
+    result_path = '../../../data'
+
+    multiple_kb_improver = SameAs(table_name, table_path, baidubaike_edg_path, hudongbaike_edg_path, zhwiki_edg_path, result_path)
+    multiple_kb_improver.extract_sameAs()
 
     print 'Done!'
 
 
 def main():
     print "Entity Linking System in Web Tables with Multiple Linked Knowledge Bases"
-    print "Version 1.0"
+    print "Version 1.8"
     print "Copyright @2017/3/1 Shengjia Yan. All Rights Reserved."
 
-    preprocess()
+    # preprocess()
     # candidate_generation()
-    # entity_disambiguation()
+    entity_disambiguation()
     # sameAs()
 
 if __name__ == "__main__":
