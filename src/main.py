@@ -202,30 +202,40 @@ def entity_disambiguation():
 
 # Step 4: 利用多知识库间sameAs关系提升链接质量
 def sameAs():
-    print 'Improving entity linking with multiple linked KBs......',
-
     table_name = 'table_123'
     table_path = '../../../data/table/table_123.xls'
     baidubaike_edg_path = '../../../data/disambiguation/baidubaike/graph/'
     hudongbaike_edg_path = '../../../data/disambiguation/hudongbaike/graph/'
     zhwiki_edg_path = '../../../data/disambiguation/zhwiki/graph/'
-    result_path = '../../../data'
+    baidubaike_hudongbaike_sameas_path = '../../../data/sameas/baidubaike_hudongbaike_sameas.txt'
+    hudongbaike_zhwiki_sameas_path = '../../../data/sameas/hudongbaike_zhwiki_sameas.txt'
+    zhwiki_baidubaike_sameas_path = '../../../data/sameas/zhwiki_baidubaike_sameas.txt'
+    result_path = '../../../data/final/'
 
-    multiple_kb_improver = SameAs(table_name, table_path, baidubaike_edg_path, hudongbaike_edg_path, zhwiki_edg_path, result_path)
-    multiple_kb_improver.extract_sameAs()
+    multiple_kb_improver = SameAs(table_name, table_path, baidubaike_edg_path, hudongbaike_edg_path, zhwiki_edg_path, baidubaike_hudongbaike_sameas_path, hudongbaike_zhwiki_sameas_path, zhwiki_baidubaike_sameas_path, result_path)
 
+    # print 'Extracting sameas relations from three KBs......',
+    # multiple_kb_improver.extract_sameAs()
+    # print 'Done!'
+
+    print 'Conbining single kb EL results into one file......',
+    multiple_kb_improver.conbine_single_kb_el_result()
+    print 'Done!'
+
+    print 'Improving entity linking with multiple linked KBs......',
+    multiple_kb_improver.rerank()
     print 'Done!'
 
 
 def main():
     print "Entity Linking System in Web Tables with Multiple Linked Knowledge Bases"
-    print "Version 1.8"
+    print "Version 2.0"
     print "Copyright @2017/3/1 Shengjia Yan. All Rights Reserved."
 
     # preprocess()
-    # candidate_generation()
+    candidate_generation()
     entity_disambiguation()
-    # sameAs()
+    sameAs()
 
 if __name__ == "__main__":
     main()

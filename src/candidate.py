@@ -123,6 +123,7 @@ class Candidate(object):
                                         candidates.append(entity)
 
                             dict['mention'] = cell
+                            candidates = list(set(candidates))  # 去除重复元素
                             dict['candidates'] = candidates
                             row.append(dict)
 
@@ -211,6 +212,7 @@ class Candidate(object):
                                         candidates.append(entity)
 
                             dict['mention'] = cell
+                            candidates = list(set(candidates))  # 去除重复元素
                             dict['candidates'] = candidates
                             row.append(dict)
 
@@ -298,6 +300,7 @@ class Candidate(object):
                                         candidates.append(entity)
 
                             dict['mention'] = cell
+                            candidates = list(set(candidates))  # 去除重复元素
                             dict['candidates'] = candidates
                             row.append(dict)
 

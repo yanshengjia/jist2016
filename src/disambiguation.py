@@ -61,6 +61,9 @@ class EntityDisambiguationGraph(object):
         self.node_quantity = 0
         self.A = []
         self.r = []
+        self.damping_factor = 0.85
+        self.iterations = 1000
+        self.delta = 0.00001
         print 'Table ' + str(table_number)
 
     # 获取当前表格中一个 mention 的上下文，该 mention 位于第r行第c列，r与c都从0开始
@@ -407,15 +410,15 @@ class EntityDisambiguationGraph(object):
     # Iterative Probability Propagation
     # 计算 entity node probability (该 entity 成为 mention 的对应实体的概率)
     def iterative_probability_propagation(self):
-        print 'Iterative Probability Propagation......',
+        print 'Iterative Probability Propagation (Iteration Limit: ' + str(self.iterations) + ', Delta: ' + str(self.delta) + ')......',
         EDG = self.EDG
         n = self.node_quantity
-        damping_factor = 0.85
-        iterations = 10000
+        damping_factor = self.damping_factor
+        iterations = self.iterations
+        delta = self.delta
         A = [[0.0 for col in range(n)] for row in range(n)]
         E = [[1.0 for col in range(n)] for row in range(n)]
         r = [0.0 for i in range(n)]
-        delta = 0.000001
         flag_convergence = False
 
         # compute A[i][j]
@@ -518,10 +521,10 @@ class EntityDisambiguationGraph(object):
 
             for e in candidates:
                 probability = r[e]
-                tuple = (e, probability)
+                tuple = (e, probability)    # (实体节点编号，实体成为 mention 的对应实体的概率)
                 ranking.append(tuple)
 
-            ranking.sort(key=lambda x: x[1], reverse=True)
+            ranking.sort(key=lambda x: x[1], reverse=True)  # ranking 根据概率逆序排序，下标越小概率越大
             EDG.node[i]['ranking'] = ranking
 
         self.EDG = EDG
@@ -732,4 +735,5 @@ class Disambiguation(object):
 
                 if zhwiki_abstracts:
                     zhwiki_abstracts.close()
+
 
