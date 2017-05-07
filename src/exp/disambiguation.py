@@ -61,9 +61,9 @@ class EntityDisambiguationGraph(object):
         self.node_quantity = 0
         self.A = []
         self.r = []
-        self.damping_factor = 0.85
-        self.iterations = 1000
-        self.delta = 0.00001
+        self.damping_factor = 0.5
+        self.iterations = 500
+        self.delta = 0.0001
         print 'Table ' + str(table_number)
 
     # 获取当前表格中一个 mention 的上下文，该 mention 位于第r行第c列，r与c都从0开始
@@ -410,7 +410,7 @@ class EntityDisambiguationGraph(object):
     # Iterative Probability Propagation
     # 计算 entity node probability (该 entity 成为 mention 的对应实体的概率)
     def iterative_probability_propagation(self):
-        print 'Iterative Probability Propagation (Iteration Limit: ' + str(self.iterations) + ', Delta: ' + str(self.delta) + ')......',
+        print 'Iterative Probability Propagation (Iteration Limit: ' + str(self.iterations) + ', Delta: ' + str(self.delta) + ', Damping Factor: ' + str(self.damping_factor) + ')......',
         EDG = self.EDG
         n = self.node_quantity
         damping_factor = self.damping_factor
@@ -452,7 +452,7 @@ class EntityDisambiguationGraph(object):
                             A[i][j] = A[j][i]
 
                 if i_type == 'eNode' and j_type == 'eNode':
-                    A[i][j] = (1.0 - self.SR_em(i)) * self.EDG.edge[i][j]['probability'] / self.SR_ee_star(i)
+                    A[i][j] = (1.0 - self.SR_em(i)) * EDG.edge[i][j]['probability'] / self.SR_ee_star(i)
 
         self.A = A
 
@@ -470,17 +470,18 @@ class EntityDisambiguationGraph(object):
 
         # update r(i)
         for epoch in range(1, iterations + 1):
-            matrix_r_next = ((1.0 - damping_factor) * matrix_E / n + damping_factor * matrix_A) * matrix_r
+            matrix_r_next = ((1.0 - damping_factor) * (matrix_E / n) + damping_factor * matrix_A) * matrix_r
 
             r_list = matrix_r.tolist()
             r_next_list = matrix_r_next.tolist()
             max_difference = 0.0
 
             for i in range(n):
-                difference = abs(r_list[i][0] - r_next_list[i][0])
+                if EDG.node[i]['type'] == 'eNode':
+                    difference = abs(r_list[i][0] - r_next_list[i][0])
 
-                if difference > max_difference:
-                    max_difference = difference
+                    if difference > max_difference:
+                        max_difference = difference
 
             if max_difference <= delta:
                 print 'At Epoch ' + str(epoch) + ' Convergence is Reached!'
@@ -586,7 +587,7 @@ class Disambiguation(object):
     # graph_path: Entity Disambiguation Graph 存储路径
     # disambiguation_output_path: 消岐结果文件的路径
     # infobox_property_path: 知识库的 infobox_property 文件路径
-    # abstracts_path: 知识库的 abstracts_path 文件路径
+    # abstracts_path: 知识库的 abstracts 文件路径
     def __init__(self, table_name, table_path, kb_name, candidate_name, candidate_path, graph_path, disambiguation_output_path, infobox_property_path, abstracts_path):
         table_manager = TableManager(table_path)
         self.tables = table_manager.get_tables()  # tables 是 Table 类型数组

@@ -210,7 +210,7 @@ def sameAs():
     baidubaike_hudongbaike_sameas_path = '../../../data/sameas/baidubaike_hudongbaike_sameas.txt'
     hudongbaike_zhwiki_sameas_path = '../../../data/sameas/hudongbaike_zhwiki_sameas.txt'
     zhwiki_baidubaike_sameas_path = '../../../data/sameas/zhwiki_baidubaike_sameas.txt'
-    result_path = '../../../data/final/'
+    result_path = '../../../data/final/jist2016/'
 
     multiple_kb_improver = SameAs(table_name, table_path, baidubaike_edg_path, hudongbaike_edg_path, zhwiki_edg_path, baidubaike_hudongbaike_sameas_path, hudongbaike_zhwiki_sameas_path, zhwiki_baidubaike_sameas_path, result_path)
 
@@ -233,7 +233,7 @@ def main():
     print "Copyright @2017/3/1 Shengjia Yan. All Rights Reserved."
 
     # preprocess()
-    candidate_generation()
+    # candidate_generation()
     entity_disambiguation()
     sameAs()
 

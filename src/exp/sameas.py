@@ -250,7 +250,7 @@ class SameAs(object):
                 for r in range(row_num):
                     row = []
                     for c in range(col_num):
-                        dict = {}       # {'mention': m, 'entity': [(entity1, kb1), (entity2, kb2), (entity3, kb3)]}
+                        dict = {}       # {'header': h} or {'mention': m, 'entity': [(entity1, kb1), (entity2, kb2), (entity3, kb3)]}
 
                         if r == 0:
                             dict['header'] = baidubaike_result_json[r][c]['header']
@@ -385,7 +385,7 @@ class SameAs(object):
                     row = []
 
                     for c in range(col_num):
-                        cell = {}   # {'mention': m, 'entity': [(entity1, kb1), (entity2, kb2), (entity3, kb3)]}
+                        cell = {}   # {'header': h} or {'mention': m, 'entity': [(entity1, kb1), (entity2, kb2), (entity3, kb3)]}
                         mention = table.get_cell(r, c)  # unicode
 
                         if r == 0:  # 表头不做实体链接
