@@ -37,6 +37,8 @@ class EntityDisambiguationGraph(object):
     # entity_node_begin: entity node 编号的开始
     # entity_node_end: entity node 编号的结束
     # node_quantity: 所有节点的总数
+    # alpha1, beta1, alpha2, beta2: 计算语义相似度时的参数
+    # bonus: 当 mention 与 candidate entity 完全相等时，该实体节点上概率的增量
     # A: 概率转移列表
     # r: 消岐结果概率列表
     def __init__(self, kb_name, table_number, table, candidates, graph_path, infobox_property, abstracts, disambiguation_output_path):
@@ -64,6 +66,11 @@ class EntityDisambiguationGraph(object):
         self.damping_factor = 0.5
         self.iterations = 500
         self.delta = 0.0001
+        self.alpha1 = 0.5
+        self.beta1 = 0.5
+        self.alpha2 = 0.5
+        self.beta2 = 0.5
+        self.bonus = 100
         print 'Table ' + str(table_number)
 
     # 获取当前表格中一个 mention 的上下文，该 mention 位于第r行第c列，r与c都从0开始
@@ -292,8 +299,8 @@ class EntityDisambiguationGraph(object):
     # m: mention node index
     # e: entity node index
     def SR_me(self, m, e):
-        alpha1 = 0.5
-        beta1 = 0.5
+        alpha1 = self.alpha1
+        beta1 = self.beta1
         sr_me = 0.99 * (alpha1 * self.strSim(m, e) + beta1 * self.contSim_me(m, e)) + 0.01
         return sr_me
 
@@ -350,8 +357,8 @@ class EntityDisambiguationGraph(object):
     # e1: entity1 node index
     # e2: entity2 node index
     def SR_ee(self, e1, e2):
-        alpha2 = 0.5
-        beta2 = 0.5
+        alpha2 = self.alpha2
+        beta2 = self.alpha2
         sr_ee = 0.99 * (alpha2 * self.IsRDF(e1, e2) + beta2 * self.contSim_ee(e1, e2)) + 0.01
         return sr_ee
 
@@ -517,11 +524,18 @@ class EntityDisambiguationGraph(object):
             if EDG.node[i]['NIL'] == True:
                 continue
 
+            mention = EDG.node[i]['mention']
             candidates = EDG.neighbors(i)
             ranking = []
 
             for e in candidates:
-                probability = r[e]
+                entity = EDG.node[e]['candidate']
+
+                if entity == mention:
+                    probability = r[e] + self.bonus
+                else:
+                    probability = r[e]
+
                 tuple = (e, probability)    # (实体节点编号，实体成为 mention 的对应实体的概率)
                 ranking.append(tuple)
 
