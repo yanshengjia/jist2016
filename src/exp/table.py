@@ -6,6 +6,7 @@
 # 表格类与读取表格文件的类
 
 import xlrd
+import jieba
 
 class Table(object):
     # table: 二维数组存储表格中的内容
@@ -34,12 +35,12 @@ class Table(object):
         for i in range(self.row_num):
             if i == r:
                 continue
-            mention_context.append(self.get_cell(i, c))
+            mention_context.append(self.get_cell(i, c))  # unicode
 
         for j in range(self.col_num):
             if j == c:
                 continue
-            mention_context.append(self.get_cell(r, j))
+            mention_context.append(self.get_cell(r, j))  # unicode
 
         return mention_context
 

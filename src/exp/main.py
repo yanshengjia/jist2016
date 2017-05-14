@@ -258,9 +258,9 @@ def result():
     table_path = '../../../data/table/table.xls'
     single_kb_el_result_path = '../../../data/final/jist2016/single_kb_el_result.txt'
     multiple_kb_el_result_path = '../../../data/final/jist2016/multiple_kb_el_result.txt'
-    baidubaike_human_mark_entity_path = '../../../data/mark/baidubaike_human_mark_entity.txt'
-    hudongbaike_human_mark_entity_path = '../../../data/mark/hudongbaike_human_mark_entity.txt'
-    zhwiki_human_mark_entity_path = '../../../data/mark/zhwiki_human_mark_entity.txt'
+    baidubaike_human_mark_entity_path = '../../../data/mark/baidubaike/baidubaike_human_mark.txt'
+    hudongbaike_human_mark_entity_path = '../../../data/mark/hudongbaike/hudongbaike_human_mark.txt'
+    zhwiki_human_mark_entity_path = '../../../data/mark/zhwiki/zhwiki_human_mark.txt'
 
     comparer = Result(table_path, single_kb_el_result_path, multiple_kb_el_result_path, baidubaike_human_mark_entity_path, hudongbaike_human_mark_entity_path, zhwiki_human_mark_entity_path)
 
@@ -275,9 +275,9 @@ def main():
 
     # preprocess()
     # candidate_generation()
-    entity_disambiguation()
-    sameas()
-    # result()
+    # entity_disambiguation()
+    # sameas()
+    result()
 
 if __name__ == "__main__":
     main()

@@ -38,7 +38,7 @@ class EntityDisambiguationGraph(object):
     # entity_node_end: entity node 编号的结束
     # node_quantity: 所有节点的总数
     # alpha1, beta1, alpha2, beta2: 计算语义相似度时的参数
-    # bonus: 当 mention 与 candidate entity 完全相等时，该实体节点上概率的增量
+    # bonus: 实体节点上概率奖励增量，为其所在的候选实体集合中所有实体节点概率的平均值
     # A: 概率转移列表
     # r: 消岐结果概率列表
     def __init__(self, kb_name, table_number, table, candidates, graph_path, infobox_property, abstracts, disambiguation_output_path):
@@ -70,7 +70,7 @@ class EntityDisambiguationGraph(object):
         self.beta1 = 0.5
         self.alpha2 = 0.5
         self.beta2 = 0.5
-        self.bonus = 100
+        self.bonus = 0.0
         print 'Table ' + str(table_number)
 
     # 获取当前表格中一个 mention 的上下文，该 mention 位于第r行第c列，r与c都从0开始
@@ -103,11 +103,13 @@ class EntityDisambiguationGraph(object):
 
             if e == subject:
                 object = object.decode('utf8')
-                entity_context.append(object)
+                seg_list = jieba.lcut(object)   # unicode
+                entity_context.extend(seg_list)
 
             if e == object:
                 subject = subject.decode('utf8')
-                entity_context.append(subject)
+                seg_list = jieba.lcut(subject)  # unicode
+                entity_context.extend(seg_list)
 
         # 从 abstracts 中找实体的上下文
         abstracts = self.abstracts
@@ -136,6 +138,38 @@ class EntityDisambiguationGraph(object):
         entity_context.extend(seg_list)
 
         return entity_context   # unicode
+
+    # 获取实体字符串的消岐义内容
+    # entity: entity 字符串
+    def get_entity_disambiguation(self, entity):
+        disambiguation = ''
+
+        # baidubaike
+        if self.kb_name == 'baidubaike':        # 完整的实体 entity，包括消岐义内容 real_entity[disambiguation]
+            split = entity.split('[')
+            if len(split) == 2:
+                disambiguation = split[1]
+                disambiguation = disambiguation[:-1]
+
+        if self.kb_name == 'hudongbaike':       # 完整的实体 entity，包括消岐义内容 real_entity [disambiguation] or real_entity[disambiguation]
+            split = entity.split(' [')
+
+            if len(split) == 1:
+                newsplit = entity.split('[')
+                if len(newsplit) == 2:
+                    disambiguation = newsplit[1]
+                    disambiguation = disambiguation[:-1]
+            else:
+                disambiguation = split[1]
+                disambiguation = disambiguation[:-1]
+
+        if self.kb_name == 'zhwiki':            # 完整的实体 entity，包括消岐义内容 real_entity (disambiguation)
+            split = entity.split(' (')
+            if len(split) == 2:
+                disambiguation = split[1]
+                disambiguation = disambiguation[:-1]
+
+        return disambiguation
 
     # Building Entity Disambiguation Graph
     # mNode: mention node
@@ -188,12 +222,15 @@ class EntityDisambiguationGraph(object):
 
                 if flag_NIL == False:
                     # 在 EDG 中添加 entity node
+                    # candidate: 候选实体字符串
                     # mNode_index: entity node 相邻的唯一一个 mention node 的编号
+                    # disambiguation: 实体名称中的消岐义部分 entity [disambiguation]
                     for candidate in mention_candidates:
                         candidate_index += 1
-                        EDG.add_node(entity_counter, type='eNode', candidate=candidate, index=candidate_index, mNode_index=mention_counter, probability=float(0), context=[])
+                        EDG.add_node(entity_counter, type='eNode', candidate=candidate, index=candidate_index, mNode_index=mention_counter, probability=float(0), context=[], disambiguation='')
                         # EDG.node[entity_counter]['label'] = 'candidate' + str(EDG.node[entity_counter]['index']) + ': ' + EDG.node[entity_counter]['candidate']
                         EDG.node[entity_counter]['context'] = self.get_entity_context(candidate)
+                        EDG.node[entity_counter]['disambiguation'] = self.get_entity_disambiguation(candidate)
 
                         # 在 EDG 中添加 mention-entity edge
                         EDG.add_edge(mention_counter, entity_counter, type='meEdge', probability=float(0))
@@ -261,9 +298,15 @@ class EntityDisambiguationGraph(object):
             split = entity.split('[')
             real_entity = split[0]                  # 真实的实体 (unicode)，去除了消岐义内容 real_entity
 
-        if self.kb_name == 'hudongbaike':           # 完整的实体，包括消岐义内容 real_entity [disambiguation]
+        if self.kb_name == 'hudongbaike':           # 完整的实体，包括消岐义内容 real_entity [disambiguation] or real_entity[disambiguation]
             split = entity.split(' [')
-            real_entity = split[0]                  # 真实的实体 (unicode)，去除了消岐义内容 real_entity
+
+            if len(split) == 1:
+                entity = split[0]
+                newsplit = entity.split('[')
+                real_entity = newsplit[0]           # 真实的实体 (unicode)，去除了消岐义内容 real_entity
+            else:
+                real_entity = split[0]              # 真实的实体 (unicode)，去除了消岐义内容 real_entity
 
         if self.kb_name == 'zhwiki':                # 完整的实体，包括消岐义内容 real_entity (disambiguation)
             split = entity.split(' (')
@@ -506,11 +549,6 @@ class EntityDisambiguationGraph(object):
         if flag_convergence == False:
             print 'After Epoch ' + str(iterations) + ' Iterative Probability Propagation is Done!'
 
-        # 计算 eNode 上的概率 并 打上标签
-        for p in range(self.entity_node_begin, self.entity_node_end + 1):
-            EDG.node[p]['probability'] = r[p]
-            self.miniEDG.node[p]['label'] = 'candidate' + str(EDG.node[p]['index']) + ': ' + EDG.node[p]['candidate'] + '\n' + str(EDG.node[p]['probability'])
-
         self.r = r
         self.EDG = EDG
 
@@ -525,22 +563,55 @@ class EntityDisambiguationGraph(object):
                 continue
 
             mention = EDG.node[i]['mention']
+            mention_context = EDG.node[i]['context']
             candidates = EDG.neighbors(i)
             ranking = []
 
+            self.bonus = 0.0
+            for e in candidates:
+                self.bonus += r[e]
+            self.bonus /= len(candidates)
+
             for e in candidates:
                 entity = EDG.node[e]['candidate']
+                disambiguation = EDG.node[e]['disambiguation']
+                probability = r[e]
 
                 if entity == mention:
-                    probability = r[e] + self.bonus
-                else:
-                    probability = r[e]
+                    probability += self.bonus           # 候选实体与 mention 完全相同，奖励该候选实体
 
+                for c in mention_context:
+                    if c in disambiguation:
+                        probability += 2 * self.bonus    # mention 的上下文中元素出现在候选实体的消岐义内容中，奖励该候选实体
+
+                r[e] = probability
                 tuple = (e, probability)    # (实体节点编号，实体成为 mention 的对应实体的概率)
                 ranking.append(tuple)
 
-            ranking.sort(key=lambda x: x[1], reverse=True)  # ranking 根据概率逆序排序，下标越小概率越大
-            EDG.node[i]['ranking'] = ranking
+            # 将实体结果的概率归一化
+            max = 0.0
+            for e in candidates:
+                if r[e] > max:
+                    max = r[e]
+
+            for e in candidates:
+                r[e] /= max
+
+            newranking = []
+            for t in ranking:
+                t = list(t)
+                e = t[0]
+                p = t[1] / max
+                tuple = (e, p)
+                newranking.append(tuple)
+
+            newranking.sort(key=lambda x: x[1], reverse=True)  # newranking 根据概率逆序排序，下标越小概率越大
+            EDG.node[i]['ranking'] = newranking
+
+        # 计算 eNode 上的概率 并 打上标签
+        for p in range(self.entity_node_begin, self.entity_node_end + 1):
+            EDG.node[p]['probability'] = r[p]
+            self.miniEDG.node[p]['label'] = 'candidate' + str(EDG.node[p]['index']) + ': ' + EDG.node[p]['candidate'] + '\n' + str(EDG.node[p]['probability'])
 
         self.EDG = EDG
         print 'Done!'
