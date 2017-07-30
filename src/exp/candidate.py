@@ -4,7 +4,7 @@
 # Date: 2017/3/3
 # Email: sjyan@seu.edu.cn
 # 实验的第二步：单知识库生成候选实体
-# 所有候选实体来自给定知识库的 labels，并没有用 BabelNet 做同义词检测。
+# 候选实体来自给定知识库的 labels，并且使用了 BabelNet 做同义词检测。
 
 import json
 import sys
